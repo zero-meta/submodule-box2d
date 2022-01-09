@@ -116,7 +116,8 @@ typedef unsigned long long uint64;
 
 /// A small length used as a collision and constraint tolerance. Usually it is
 /// chosen to be numerically significant, but visually insignificant.
-#define b2_linearSlop			0.005f
+// #define b2_linearSlop			0.005f
+#define b2_linearSlop			b2Settings::linearSlop
 
 /// A small angle used as a collision and constraint tolerance. Usually it is
 /// chosen to be numerically significant, but visually insignificant.
@@ -275,6 +276,7 @@ extern const char *b2_liquidFunVersionString;
 class b2Settings
 {
 	public:
+		static float linearSlop;
 		static float velocityThreshold;
 		static float timeToSleep;
 		static int32 maxSubSteps;

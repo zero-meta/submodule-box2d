@@ -345,8 +345,10 @@ void b2Island::Solve(b2Profile* profile, const b2TimeStep& step, const b2Vec2& g
 	{
 		float32 minSleepTime = b2_maxFloat;
 
-		const float32 linTolSqr = b2_linearSleepTolerance * b2_linearSleepTolerance;
-		const float32 angTolSqr = b2_angularSleepTolerance * b2_angularSleepTolerance;
+		// const float32 linTolSqr = b2_linearSleepTolerance * b2_linearSleepTolerance;
+		// const float32 angTolSqr = b2_angularSleepTolerance * b2_angularSleepTolerance;
+		const float32 linTolSqr = b2Settings::linearSleepToleranceSq;
+		const float32 angTolSqr = b2Settings::angularSleepToleranceSq;
 
 		for (int32 i = 0; i < m_bodyCount; ++i)
 		{
@@ -370,7 +372,7 @@ void b2Island::Solve(b2Profile* profile, const b2TimeStep& step, const b2Vec2& g
 			}
 		}
 
-		if (minSleepTime >= b2_timeToSleep && positionSolved)
+		if (minSleepTime >= b2Settings::timeToSleep && positionSolved)
 		{
 			for (int32 i = 0; i < m_bodyCount; ++i)
 			{

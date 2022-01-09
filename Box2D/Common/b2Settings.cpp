@@ -143,6 +143,7 @@ namespace
 	} validate;
 }
 
+float b2Settings::linearSlop = 0.005f;
 float b2Settings::velocityThreshold = b2_velocityThreshold;
 float b2Settings::timeToSleep = b2_timeToSleep;
 int32 b2Settings::maxSubSteps = b2_maxSubSteps;
