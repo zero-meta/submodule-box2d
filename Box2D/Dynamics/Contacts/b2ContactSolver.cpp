@@ -207,7 +207,7 @@ void b2ContactSolver::InitializeVelocityConstraints()
 			// Setup a velocity bias for restitution.
 			vcp->velocityBias = 0.0f;
 			float32 vRel = b2Dot(vc->normal, vB + b2Cross(wB, vcp->rB) - vA - b2Cross(wA, vcp->rA));
-			if (vRel < -b2_velocityThreshold)
+			if (vRel < -b2Settings::velocityThreshold)
 			{
 				vcp->velocityBias = -vc->restitution * vRel;
 			}
