@@ -105,6 +105,7 @@ set(BOX2D_Joints_SRCS
 	Dynamics/Joints/b2RevoluteJoint.cpp
 	Dynamics/Joints/b2RopeJoint.cpp
 	Dynamics/Joints/b2WeldJoint.cpp
+	Dynamics/Joints/b2FakeJoint.cpp
 	Dynamics/Joints/b2WheelJoint.cpp
 )
 set(BOX2D_Joints_HDRS
@@ -119,6 +120,7 @@ set(BOX2D_Joints_HDRS
 	Dynamics/Joints/b2RevoluteJoint.h
 	Dynamics/Joints/b2RopeJoint.h
 	Dynamics/Joints/b2WeldJoint.h
+	Dynamics/Joints/b2FakeJoint.h
 	Dynamics/Joints/b2WheelJoint.h
 )
 set(BOX2D_Particle_SRCS

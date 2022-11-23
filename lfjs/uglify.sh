@@ -14,6 +14,7 @@ java -jar $CLOSURE_JAR --language_in ECMASCRIPT5 \
 ./jsBindings/Dynamics/b2World.js \
 ./jsBindings/Dynamics/Joints/b2WheelJoint.js \
 ./jsBindings/Dynamics/Joints/b2WeldJoint.js \
+./jsBindings/Dynamics/Joints/b2FakeJoint.js \
 ./jsBindings/Dynamics/Joints/b2GearJoint.js \
 ./jsBindings/Dynamics/Joints/b2Joint.js \
 ./jsBindings/Dynamics/Joints/b2FrictionJoint.js \

@@ -27,6 +27,7 @@ $(O)/Dynamics/Joints/b2MotorJoint.cpp \
 $(O)/Dynamics/Joints/b2DistanceJoint.cpp \
 $(O)/Dynamics/Joints/b2FrictionJoint.cpp \
 $(O)/Dynamics/Joints/b2WeldJoint.cpp \
+$(O)/Dynamics/Joints/b2FakeJoint.cpp \
 $(O)/Dynamics/Joints/b2GearJoint.cpp \
 $(O)/Dynamics/Joints/b2PrismaticJoint.cpp \
 $(O)/Dynamics/Joints/b2RopeJoint.cpp \
@@ -195,6 +196,10 @@ B2WELDJOINT = \
 	'_b2WeldJointDef_Create', \
 	'_b2WeldJointDef_InitializeAndCreate' \
 
+B2FAKEJOINT = \
+	'_b2FakeJointDef_Create', \
+	'_b2FakeJointDef_InitializeAndCreate' \
+
 B2WHEELJOINT = \
 	'_b2WheelJoint_SetMotorSpeed', \
 	'_b2WheelJoint_SetSpringFrequencyHz', \
@@ -238,6 +243,7 @@ EXPORTS = EXPORTED_FUNCTIONS="[ \
 	$(B2REVOLUTEJOINT), \
 	$(B2ROPEJOINT), \
 	$(B2WELDJOINT), \
+	$(B2FAKEJOINT), \
 	$(B2WHEELJOINT), \
 	$(B2WORLD) \
 	]"

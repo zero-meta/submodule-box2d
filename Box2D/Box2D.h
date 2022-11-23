@@ -60,6 +60,7 @@
 #include <Box2D/Dynamics/Joints/b2RevoluteJoint.h>
 #include <Box2D/Dynamics/Joints/b2RopeJoint.h>
 #include <Box2D/Dynamics/Joints/b2WeldJoint.h>
+#include <Box2D/Dynamics/Joints/b2FakeJoint.h>
 #include <Box2D/Dynamics/Joints/b2WheelJoint.h>
 
 #include <Box2D/Particle/b2Particle.h>

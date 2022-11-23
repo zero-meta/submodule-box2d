@@ -25,6 +25,7 @@
 #include <Box2D/Dynamics/Joints/b2PulleyJoint.h>
 #include <Box2D/Dynamics/Joints/b2GearJoint.h>
 #include <Box2D/Dynamics/Joints/b2WeldJoint.h>
+#include <Box2D/Dynamics/Joints/b2FakeJoint.h>
 #include <Box2D/Dynamics/Joints/b2FrictionJoint.h>
 #include <Box2D/Dynamics/Joints/b2RopeJoint.h>
 #include <Box2D/Dynamics/Joints/b2MotorJoint.h>
@@ -93,6 +94,13 @@ b2Joint* b2Joint::Create(const b2JointDef* def, b2BlockAllocator* allocator)
 		{
 			void* mem = allocator->Allocate(sizeof(b2WeldJoint));
 			joint = new (mem) b2WeldJoint(static_cast<const b2WeldJointDef*>(def));
+		}
+		break;
+
+	case e_fakeJoint:
+		{
+			void* mem = allocator->Allocate(sizeof(b2FakeJoint));
+			joint = new (mem) b2FakeJoint(static_cast<const b2FakeJointDef*>(def));
 		}
 		break;
         

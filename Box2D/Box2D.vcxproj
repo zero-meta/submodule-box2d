@@ -208,6 +208,7 @@
     <ClInclude Include="Dynamics\Joints\b2RevoluteJoint.h" />
     <ClInclude Include="Dynamics\Joints\b2RopeJoint.h" />
     <ClInclude Include="Dynamics\Joints\b2WeldJoint.h" />
+    <ClInclude Include="Dynamics\Joints\b2FakeJoint.h" />
     <ClInclude Include="Dynamics\Joints\b2WheelJoint.h" />
     <ClInclude Include="Dynamics\Contacts\b2CircleContact.h" />
     <ClInclude Include="Dynamics\Contacts\b2Contact.h" />
@@ -264,6 +265,7 @@
     <ClCompile Include="Dynamics\Joints\b2RevoluteJoint.cpp"  />
     <ClCompile Include="Dynamics\Joints\b2RopeJoint.cpp"  />
     <ClCompile Include="Dynamics\Joints\b2WeldJoint.cpp"  />
+    <ClCompile Include="Dynamics\Joints\b2FakeJoint.cpp"  />
     <ClCompile Include="Dynamics\Joints\b2WheelJoint.cpp"  />
     <ClCompile Include="Dynamics\Contacts\b2CircleContact.cpp"  />
     <ClCompile Include="Dynamics\Contacts\b2Contact.cpp"  />
