@@ -16,8 +16,8 @@
 * 3. This notice may not be removed or altered from any source distribution.
 */
 
-#include <Box2D/Collision/b2Collision.h>
-#include <Box2D/Collision/b2Distance.h>
+#include "Box2D/Collision/b2Collision.h"
+#include "Box2D/Collision/b2Distance.h"
 
 void b2WorldManifold::Initialize(const b2Manifold* manifold,
 						  const b2Transform& xfA, float32 radiusA,
@@ -30,7 +30,7 @@ void b2WorldManifold::Initialize(const b2Manifold* manifold,
 
 	switch (manifold->type)
 	{
-	case b2Manifold::e_circles:
+		case b2Manifold::e_circles:
 		{
 			normal.Set(1.0f, 0.0f);
 			b2Vec2 pointA = b2Mul(xfA, manifold->localPoint);
@@ -48,11 +48,11 @@ void b2WorldManifold::Initialize(const b2Manifold* manifold,
 		}
 		break;
 
-	case b2Manifold::e_faceA:
+		case b2Manifold::e_faceA:
 		{
 			normal = b2Mul(xfA.q, manifold->localNormal);
 			b2Vec2 planePoint = b2Mul(xfA, manifold->localPoint);
-			
+
 			for (int32 i = 0; i < manifold->pointCount; ++i)
 			{
 				b2Vec2 clipPoint = b2Mul(xfB, manifold->points[i].localPoint);
@@ -64,7 +64,7 @@ void b2WorldManifold::Initialize(const b2Manifold* manifold,
 		}
 		break;
 
-	case b2Manifold::e_faceB:
+		case b2Manifold::e_faceB:
 		{
 			normal = b2Mul(xfB.q, manifold->localNormal);
 			b2Vec2 planePoint = b2Mul(xfB, manifold->localPoint);
@@ -78,7 +78,7 @@ void b2WorldManifold::Initialize(const b2Manifold* manifold,
 				separations[i] = b2Dot(cA - cB, normal);
 			}
 
-			// Ensure normal points from A to B.
+      // Ensure normal points from A to B.
 			normal = -normal;
 		}
 		break;
@@ -86,7 +86,7 @@ void b2WorldManifold::Initialize(const b2Manifold* manifold,
 }
 
 void b2GetPointStates(b2PointState state1[b2_maxManifoldPoints], b2PointState state2[b2_maxManifoldPoints],
-					  const b2Manifold* manifold1, const b2Manifold* manifold2)
+	const b2Manifold* manifold1, const b2Manifold* manifold2)
 {
 	for (int32 i = 0; i < b2_maxManifoldPoints; ++i)
 	{
@@ -94,7 +94,7 @@ void b2GetPointStates(b2PointState state1[b2_maxManifoldPoints], b2PointState st
 		state2[i] = b2_nullState;
 	}
 
-	// Detect persists and removes.
+  // Detect persists and removes.
 	for (int32 i = 0; i < manifold1->pointCount; ++i)
 	{
 		b2ContactID id = manifold1->points[i].id;
@@ -111,7 +111,7 @@ void b2GetPointStates(b2PointState state1[b2_maxManifoldPoints], b2PointState st
 		}
 	}
 
-	// Detect persists and adds.
+  // Detect persists and adds.
 	for (int32 i = 0; i < manifold2->pointCount; ++i)
 	{
 		b2ContactID id = manifold2->points[i].id;
@@ -132,8 +132,8 @@ void b2GetPointStates(b2PointState state1[b2_maxManifoldPoints], b2PointState st
 // From Real-time Collision Detection, p179.
 bool b2AABB::RayCast(b2RayCastOutput* output, const b2RayCastInput& input) const
 {
-	float32 tmin = -b2_maxFloat;
-	float32 tmax = b2_maxFloat;
+	float tmin = -b2_maxFloat;
+	float tmax = b2_maxFloat;
 
 	b2Vec2 p = input.p1;
 	b2Vec2 d = input.p2 - input.p1;
@@ -153,12 +153,12 @@ bool b2AABB::RayCast(b2RayCastOutput* output, const b2RayCastInput& input) const
 		}
 		else
 		{
-			float32 inv_d = 1.0f / d(i);
-			float32 t1 = (lowerBound(i) - p(i)) * inv_d;
-			float32 t2 = (upperBound(i) - p(i)) * inv_d;
+			float inv_d = 1.0f / d(i);
+			float t1 = (lowerBound(i) - p(i)) * inv_d;
+			float t2 = (upperBound(i) - p(i)) * inv_d;
 
 			// Sign of the normal vector.
-			float32 s = -1.0f;
+			float s = -1.0f;
 
 			if (t1 > t2)
 			{
@@ -199,44 +199,46 @@ bool b2AABB::RayCast(b2RayCastOutput* output, const b2RayCastInput& input) const
 
 // Sutherland-Hodgman clipping.
 int32 b2ClipSegmentToLine(b2ClipVertex vOut[2], const b2ClipVertex vIn[2],
-						const b2Vec2& normal, float32 offset, int32 vertexIndexA)
+	const b2Vec2& normal, float offset, int32 vertexIndexA)
 {
 	// Start with no output points
-	int32 numOut = 0;
+	int32 count = 0;
 
 	// Calculate the distance of end points to the line
-	float32 distance0 = b2Dot(normal, vIn[0].v) - offset;
-	float32 distance1 = b2Dot(normal, vIn[1].v) - offset;
+	float distance0 = b2Dot(normal, vIn[0].v) - offset;
+	float distance1 = b2Dot(normal, vIn[1].v) - offset;
 
 	// If the points are behind the plane
-	if (distance0 <= 0.0f) vOut[numOut++] = vIn[0];
-	if (distance1 <= 0.0f) vOut[numOut++] = vIn[1];
+	if (distance0 <= 0.0f) vOut[count++] = vIn[0];
+	if (distance1 <= 0.0f) vOut[count++] = vIn[1];
 
 	// If the points are on different sides of the plane
 	if (distance0 * distance1 < 0.0f)
 	{
 		// Find intersection point of edge and plane
-		float32 interp = distance0 / (distance0 - distance1);
-		vOut[numOut].v = vIn[0].v + interp * (vIn[1].v - vIn[0].v);
+		float interp = distance0 / (distance0 - distance1);
+		vOut[count].v = vIn[0].v + interp * (vIn[1].v - vIn[0].v);
 
 		// VertexA is hitting edgeB.
-		vOut[numOut].id.cf.indexA = static_cast<uint8>(vertexIndexA);
-		vOut[numOut].id.cf.indexB = vIn[0].id.cf.indexB;
-		vOut[numOut].id.cf.typeA = b2ContactFeature::e_vertex;
-		vOut[numOut].id.cf.typeB = b2ContactFeature::e_face;
-		++numOut;
+		vOut[count].id.cf.indexA = static_cast<uint8>(vertexIndexA);
+		vOut[count].id.cf.indexB = vIn[0].id.cf.indexB;
+		vOut[count].id.cf.typeA = b2ContactFeature::e_vertex;
+		vOut[count].id.cf.typeB = b2ContactFeature::e_face;
+		++count;
+
+		b2Assert(count == 2);
 	}
 
-	return numOut;
+	return count;
 }
 
-bool b2TestOverlap(	const b2Shape* shapeA, int32 indexA,
-					const b2Shape* shapeB, int32 indexB,
-					const b2Transform& xfA, const b2Transform& xfB)
+bool b2TestOverlap(	const b2Shape* shapeA,
+	const b2Shape* shapeB,
+	const b2Transform& xfA, const b2Transform& xfB)
 {
 	b2DistanceInput input;
-	input.proxyA.Set(shapeA, indexA);
-	input.proxyB.Set(shapeB, indexB);
+	input.proxyA.Set(shapeA);
+	input.proxyB.Set(shapeB);
 	input.transformA = xfA;
 	input.transformB = xfB;
 	input.useRadii = true;

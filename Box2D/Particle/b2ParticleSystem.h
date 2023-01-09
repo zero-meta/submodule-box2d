@@ -18,10 +18,10 @@
 #ifndef B2_PARTICLE_SYSTEM_H
 #define B2_PARTICLE_SYSTEM_H
 
-#include <Box2D/Common/b2SlabAllocator.h>
-#include <Box2D/Common/b2GrowableBuffer.h>
-#include <Box2D/Particle/b2Particle.h>
-#include <Box2D/Dynamics/b2TimeStep.h>
+#include "Box2D/Common/b2SlabAllocator.h"
+#include "Box2D/Common/b2GrowableBuffer.h"
+#include "Box2D/Particle/b2Particle.h"
+#include "Box2D/Dynamics/b2TimeStep.h"
 
 #if LIQUIDFUN_UNIT_TESTS
 #include <gtest/gtest.h>
@@ -635,7 +635,7 @@ public:
 	/// velocity. Similar to b2Body::ApplyLinearImpulse.
 	/// @param index the particle that will be modified.
 	/// @param impulse the world impulse vector, usually in N-seconds or
-    ///        kg-m/s.
+	///        kg-m/s.
 	void ParticleApplyLinearImpulse(int32 index, const b2Vec2& impulse);
 
 	/// Apply an impulse to all particles between 'firstIndex' and 'lastIndex'.
@@ -647,7 +647,7 @@ public:
 	/// @param firstIndex the first particle to be modified.
 	/// @param lastIndex the last particle to be modified.
 	/// @param impulse the world impulse vector, usually in N-seconds or
-    ///        kg-m/s.
+	///        kg-m/s.
 	void ApplyLinearImpulse(int32 firstIndex, int32 lastIndex,
 							const b2Vec2& impulse);
 
@@ -1403,7 +1403,7 @@ inline int32 b2ParticleSystem::GetInternalAllocatedCapacity() const
 
 inline void b2ParticleSystem::SetMaxParticleCount(int32 count)
 {
-	b2Assert(m_count <= count);
+	b2Assert(m_count <= count || count == 0);
 	m_def.maxCount = count;
 }
 
@@ -1554,4 +1554,3 @@ inline int b2ParticleSystem::CopyBuffer(int startIndex, int numParticles,
 #endif // LIQUIDFUN_EXTERNAL_LANGUAGE_API
 
 #endif
-

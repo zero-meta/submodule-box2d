@@ -18,7 +18,7 @@
 #ifndef B2_VORONOI_DIAGRAM
 #define B2_VORONOI_DIAGRAM
 
-#include <Box2D/Common/b2Math.h>
+#include "Box2D/Common/b2Math.h"
 
 class b2StackAllocator;
 struct b2AABB;

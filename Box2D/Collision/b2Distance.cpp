@@ -19,20 +19,20 @@
 #include <string.h>
 #include <memory.h>
 
-#include <Box2D/Collision/b2Distance.h>
-#include <Box2D/Collision/Shapes/b2CircleShape.h>
-#include <Box2D/Collision/Shapes/b2EdgeShape.h>
-#include <Box2D/Collision/Shapes/b2ChainShape.h>
-#include <Box2D/Collision/Shapes/b2PolygonShape.h>
+#include "Box2D/Collision/b2Distance.h"
+#include "Box2D/Collision/Shapes/b2CircleShape.h"
+#include "Box2D/Collision/Shapes/b2EdgeShape.h"
+#include "Box2D/Collision/Shapes/b2ChainShape.h"
+#include "Box2D/Collision/Shapes/b2PolygonShape.h"
 
 // GJK using Voronoi regions (Christer Ericson) and Barycentric coordinates.
-int32 b2_gjkCalls, b2_gjkIters, b2_gjkMaxIters;
+B2_API int32 b2_gjkCalls, b2_gjkIters, b2_gjkMaxIters;
 
-void b2DistanceProxy::Set(const b2Shape* shape, int32 index)
+void b2DistanceProxy::Set(const b2Shape* shape)
 {
 	switch (shape->GetType())
 	{
-	case b2Shape::e_circle:
+		case b2Shape::e_circle:
 		{
 			const b2CircleShape* circle = static_cast<const b2CircleShape*>(shape);
 			m_vertices = &circle->m_p;
@@ -41,7 +41,7 @@ void b2DistanceProxy::Set(const b2Shape* shape, int32 index)
 		}
 		break;
 
-	case b2Shape::e_polygon:
+		case b2Shape::e_polygon:
 		{
 			const b2PolygonShape* polygon = static_cast<const b2PolygonShape*>(shape);
 			m_vertices = polygon->m_vertices;
@@ -50,28 +50,7 @@ void b2DistanceProxy::Set(const b2Shape* shape, int32 index)
 		}
 		break;
 
-	case b2Shape::e_chain:
-		{
-			const b2ChainShape* chain = static_cast<const b2ChainShape*>(shape);
-			b2Assert(0 <= index && index < chain->m_count);
-
-			m_buffer[0] = chain->m_vertices[index];
-			if (index + 1 < chain->m_count)
-			{
-				m_buffer[1] = chain->m_vertices[index + 1];
-			}
-			else
-			{
-				m_buffer[1] = chain->m_vertices[0];
-			}
-
-			m_vertices = m_buffer;
-			m_count = 2;
-			m_radius = chain->m_radius;
-		}
-		break;
-
-	case b2Shape::e_edge:
+		case b2Shape::e_edge:
 		{
 			const b2EdgeShape* edge = static_cast<const b2EdgeShape*>(shape);
 			m_vertices = &edge->m_vertex1;
@@ -80,18 +59,24 @@ void b2DistanceProxy::Set(const b2Shape* shape, int32 index)
 		}
 		break;
 
-	default:
+		default:
 		b2Assert(false);
 	}
 }
 
+void b2DistanceProxy::Set(const b2Vec2* vertices, int32 count, float radius)
+{
+	m_vertices = vertices;
+	m_count = count;
+	m_radius = radius;
+}
 
 struct b2SimplexVertex
 {
 	b2Vec2 wA;		// support point in proxyA
 	b2Vec2 wB;		// support point in proxyB
 	b2Vec2 w;		// wB - wA
-	float32 a;		// barycentric coordinate for closest point
+	float a;		// barycentric coordinate for closest point
 	int32 indexA;	// wA index
 	int32 indexB;	// wB index
 };
@@ -99,11 +84,11 @@ struct b2SimplexVertex
 struct b2Simplex
 {
 	void ReadCache(	const b2SimplexCache* cache,
-					const b2DistanceProxy* proxyA, const b2Transform& transformA,
-					const b2DistanceProxy* proxyB, const b2Transform& transformB)
+		const b2DistanceProxy* proxyA, const b2Transform& transformA,
+		const b2DistanceProxy* proxyB, const b2Transform& transformB)
 	{
 		b2Assert(cache->count <= 3);
-		
+
 		// Copy data from cache.
 		m_count = cache->count;
 		b2SimplexVertex* vertices = &m_v1;
@@ -124,8 +109,8 @@ struct b2Simplex
 		// old metric then flush the simplex.
 		if (m_count > 1)
 		{
-			float32 metric1 = cache->metric;
-			float32 metric2 = GetMetric();
+			float metric1 = cache->metric;
+			float metric2 = GetMetric();
 			if (metric2 < 0.5f * metric1 || 2.0f * metric1 < metric2 || metric2 < b2_epsilon)
 			{
 				// Reset the simplex.
@@ -165,13 +150,13 @@ struct b2Simplex
 	{
 		switch (m_count)
 		{
-		case 1:
+			case 1:
 			return -m_v1.w;
 
-		case 2:
+			case 2:
 			{
 				b2Vec2 e12 = m_v2.w - m_v1.w;
-				float32 sgn = b2Cross(e12, -m_v1.w);
+				float sgn = b2Cross(e12, -m_v1.w);
 				if (sgn > 0.0f)
 				{
 					// Origin is left of e12.
@@ -184,7 +169,7 @@ struct b2Simplex
 				}
 			}
 
-		default:
+			default:
 			b2Assert(false);
 			return b2Vec2_zero;
 		}
@@ -194,20 +179,20 @@ struct b2Simplex
 	{
 		switch (m_count)
 		{
-		case 0:
+			case 0:
 			b2Assert(false);
 			return b2Vec2_zero;
 
-		case 1:
+			case 1:
 			return m_v1.w;
 
-		case 2:
+			case 2:
 			return m_v1.a * m_v1.w + m_v2.a * m_v2.w;
 
-		case 3:
+			case 3:
 			return b2Vec2_zero;
 
-		default:
+			default:
 			b2Assert(false);
 			return b2Vec2_zero;
 		}
@@ -217,49 +202,49 @@ struct b2Simplex
 	{
 		switch (m_count)
 		{
-		case 0:
+			case 0:
 			b2Assert(false);
 			break;
 
-		case 1:
+			case 1:
 			*pA = m_v1.wA;
 			*pB = m_v1.wB;
 			break;
 
-		case 2:
+			case 2:
 			*pA = m_v1.a * m_v1.wA + m_v2.a * m_v2.wA;
 			*pB = m_v1.a * m_v1.wB + m_v2.a * m_v2.wB;
 			break;
 
-		case 3:
+			case 3:
 			*pA = m_v1.a * m_v1.wA + m_v2.a * m_v2.wA + m_v3.a * m_v3.wA;
 			*pB = *pA;
 			break;
 
-		default:
+			default:
 			b2Assert(false);
 			break;
 		}
 	}
 
-	float32 GetMetric() const
+	float GetMetric() const
 	{
 		switch (m_count)
 		{
-		case 0:
+			case 0:
 			b2Assert(false);
 			return 0.0f;
 
-		case 1:
+			case 1:
 			return 0.0f;
 
-		case 2:
+			case 2:
 			return b2Distance(m_v1.w, m_v2.w);
 
-		case 3:
+			case 3:
 			return b2Cross(m_v2.w - m_v1.w, m_v3.w - m_v1.w);
 
-		default:
+			default:
 			b2Assert(false);
 			return 0.0f;
 		}
@@ -303,7 +288,7 @@ void b2Simplex::Solve2()
 	b2Vec2 e12 = w2 - w1;
 
 	// w1 region
-	float32 d12_2 = -b2Dot(w1, e12);
+	float d12_2 = -b2Dot(w1, e12);
 	if (d12_2 <= 0.0f)
 	{
 		// a2 <= 0, so we clamp it to 0
@@ -313,7 +298,7 @@ void b2Simplex::Solve2()
 	}
 
 	// w2 region
-	float32 d12_1 = b2Dot(w2, e12);
+	float d12_1 = b2Dot(w2, e12);
 	if (d12_1 <= 0.0f)
 	{
 		// a1 <= 0, so we clamp it to 0
@@ -324,7 +309,7 @@ void b2Simplex::Solve2()
 	}
 
 	// Must be in e12 region.
-	float32 inv_d12 = 1.0f / (d12_1 + d12_2);
+	float inv_d12 = 1.0f / (d12_1 + d12_2);
 	m_v1.a = d12_1 * inv_d12;
 	m_v2.a = d12_2 * inv_d12;
 	m_count = 2;
@@ -346,37 +331,37 @@ void b2Simplex::Solve3()
 	// [w1.e12 w2.e12][a2] = [0]
 	// a3 = 0
 	b2Vec2 e12 = w2 - w1;
-	float32 w1e12 = b2Dot(w1, e12);
-	float32 w2e12 = b2Dot(w2, e12);
-	float32 d12_1 = w2e12;
-	float32 d12_2 = -w1e12;
+	float w1e12 = b2Dot(w1, e12);
+	float w2e12 = b2Dot(w2, e12);
+	float d12_1 = w2e12;
+	float d12_2 = -w1e12;
 
 	// Edge13
 	// [1      1     ][a1] = [1]
 	// [w1.e13 w3.e13][a3] = [0]
 	// a2 = 0
 	b2Vec2 e13 = w3 - w1;
-	float32 w1e13 = b2Dot(w1, e13);
-	float32 w3e13 = b2Dot(w3, e13);
-	float32 d13_1 = w3e13;
-	float32 d13_2 = -w1e13;
+	float w1e13 = b2Dot(w1, e13);
+	float w3e13 = b2Dot(w3, e13);
+	float d13_1 = w3e13;
+	float d13_2 = -w1e13;
 
 	// Edge23
 	// [1      1     ][a2] = [1]
 	// [w2.e23 w3.e23][a3] = [0]
 	// a1 = 0
 	b2Vec2 e23 = w3 - w2;
-	float32 w2e23 = b2Dot(w2, e23);
-	float32 w3e23 = b2Dot(w3, e23);
-	float32 d23_1 = w3e23;
-	float32 d23_2 = -w2e23;
-	
-	// Triangle123
-	float32 n123 = b2Cross(e12, e13);
+	float w2e23 = b2Dot(w2, e23);
+	float w3e23 = b2Dot(w3, e23);
+	float d23_1 = w3e23;
+	float d23_2 = -w2e23;
 
-	float32 d123_1 = n123 * b2Cross(w2, w3);
-	float32 d123_2 = n123 * b2Cross(w3, w1);
-	float32 d123_3 = n123 * b2Cross(w1, w2);
+	// Triangle123
+	float n123 = b2Cross(e12, e13);
+
+	float d123_1 = n123 * b2Cross(w2, w3);
+	float d123_2 = n123 * b2Cross(w3, w1);
+	float d123_3 = n123 * b2Cross(w1, w2);
 
 	// w1 region
 	if (d12_2 <= 0.0f && d13_2 <= 0.0f)
@@ -389,7 +374,7 @@ void b2Simplex::Solve3()
 	// e12
 	if (d12_1 > 0.0f && d12_2 > 0.0f && d123_3 <= 0.0f)
 	{
-		float32 inv_d12 = 1.0f / (d12_1 + d12_2);
+		float inv_d12 = 1.0f / (d12_1 + d12_2);
 		m_v1.a = d12_1 * inv_d12;
 		m_v2.a = d12_2 * inv_d12;
 		m_count = 2;
@@ -399,7 +384,7 @@ void b2Simplex::Solve3()
 	// e13
 	if (d13_1 > 0.0f && d13_2 > 0.0f && d123_2 <= 0.0f)
 	{
-		float32 inv_d13 = 1.0f / (d13_1 + d13_2);
+		float inv_d13 = 1.0f / (d13_1 + d13_2);
 		m_v1.a = d13_1 * inv_d13;
 		m_v3.a = d13_2 * inv_d13;
 		m_count = 2;
@@ -428,7 +413,7 @@ void b2Simplex::Solve3()
 	// e23
 	if (d23_1 > 0.0f && d23_2 > 0.0f && d123_1 <= 0.0f)
 	{
-		float32 inv_d23 = 1.0f / (d23_1 + d23_2);
+		float inv_d23 = 1.0f / (d23_1 + d23_2);
 		m_v2.a = d23_1 * inv_d23;
 		m_v3.a = d23_2 * inv_d23;
 		m_count = 2;
@@ -437,7 +422,7 @@ void b2Simplex::Solve3()
 	}
 
 	// Must be in triangle123
-	float32 inv_d123 = 1.0f / (d123_1 + d123_2 + d123_3);
+	float inv_d123 = 1.0f / (d123_1 + d123_2 + d123_3);
 	m_v1.a = d123_1 * inv_d123;
 	m_v2.a = d123_2 * inv_d123;
 	m_v3.a = d123_3 * inv_d123;
@@ -445,8 +430,8 @@ void b2Simplex::Solve3()
 }
 
 void b2Distance(b2DistanceOutput* output,
-				b2SimplexCache* cache,
-				const b2DistanceInput* input)
+	b2SimplexCache* cache,
+	const b2DistanceInput* input)
 {
 	++b2_gjkCalls;
 
@@ -469,17 +454,6 @@ void b2Distance(b2DistanceOutput* output,
 	int32 saveA[3], saveB[3];
 	int32 saveCount = 0;
 
-	// Work around spurious gcc-4.8.2 warnings when -Wmaybe-uninitialized is
-	// enabled by initializing saveA / saveB arrays when they're referenced
-	// at the end of the main iteration loop below even though saveCount
-	// entries of each array are initialized at the start of the main
-	// iteration loop.
-	memset(saveA, 0, sizeof(saveA));
-	memset(saveB, 0, sizeof(saveB));
-
-	float32 distanceSqr1 = b2_maxFloat;
-	float32 distanceSqr2;
-
 	// Main iteration loop.
 	int32 iter = 0;
 	while (iter < k_maxIters)
@@ -494,18 +468,18 @@ void b2Distance(b2DistanceOutput* output,
 
 		switch (simplex.m_count)
 		{
-		case 1:
+			case 1:
 			break;
 
-		case 2:
+			case 2:
 			simplex.Solve2();
 			break;
 
-		case 3:
+			case 3:
 			simplex.Solve3();
 			break;
 
-		default:
+			default:
 			b2Assert(false);
 		}
 
@@ -514,17 +488,6 @@ void b2Distance(b2DistanceOutput* output,
 		{
 			break;
 		}
-
-		// Compute closest point.
-		b2Vec2 p = simplex.GetClosestPoint();
-		distanceSqr2 = p.LengthSquared();
-
-		// Ensure progress
-		if (distanceSqr2 >= distanceSqr1)
-		{
-			//break;
-		}
-		distanceSqr1 = distanceSqr2;
 
 		// Get search direction.
 		b2Vec2 d = simplex.GetSearchDirection();
@@ -545,7 +508,6 @@ void b2Distance(b2DistanceOutput* output,
 		b2SimplexVertex* vertex = vertices + simplex.m_count;
 		vertex->indexA = proxyA->GetSupport(b2MulT(transformA.q, -d));
 		vertex->wA = b2Mul(transformA, proxyA->GetVertex(vertex->indexA));
-		b2Vec2 wBLocal;
 		vertex->indexB = proxyB->GetSupport(b2MulT(transformB.q, d));
 		vertex->wB = b2Mul(transformB, proxyB->GetVertex(vertex->indexB));
 		vertex->w = vertex->wB - vertex->wA;
@@ -588,8 +550,8 @@ void b2Distance(b2DistanceOutput* output,
 	// Apply radii if requested.
 	if (input->useRadii)
 	{
-		float32 rA = proxyA->m_radius;
-		float32 rB = proxyB->m_radius;
+		float rA = proxyA->m_radius;
+		float rB = proxyB->m_radius;
 
 		if (output->distance > rA + rB && output->distance > b2_epsilon)
 		{
@@ -611,4 +573,152 @@ void b2Distance(b2DistanceOutput* output,
 			output->distance = 0.0f;
 		}
 	}
+}
+
+// GJK-raycast
+// Algorithm by Gino van den Bergen.
+// "Smooth Mesh Contacts with GJK" in Game Physics Pearls. 2010
+bool b2ShapeCast(b2ShapeCastOutput * output, const b2ShapeCastInput * input)
+{
+	output->iterations = 0;
+	output->lambda = 1.0f;
+	output->normal.SetZero();
+	output->point.SetZero();
+
+	const b2DistanceProxy* proxyA = &input->proxyA;
+	const b2DistanceProxy* proxyB = &input->proxyB;
+
+	float radiusA = b2Max(proxyA->m_radius, b2_polygonRadius);
+	float radiusB = b2Max(proxyB->m_radius, b2_polygonRadius);
+	float radius = radiusA + radiusB;
+
+	b2Transform xfA = input->transformA;
+	b2Transform xfB = input->transformB;
+
+	b2Vec2 r = input->translationB;
+	b2Vec2 n(0.0f, 0.0f);
+	float lambda = 0.0f;
+
+	// Initial simplex
+	b2Simplex simplex;
+	simplex.m_count = 0;
+
+	// Get simplex vertices as an array.
+	b2SimplexVertex* vertices = &simplex.m_v1;
+
+	// Get support point in -r direction
+	int32 indexA = proxyA->GetSupport(b2MulT(xfA.q, -r));
+	b2Vec2 wA = b2Mul(xfA, proxyA->GetVertex(indexA));
+	int32 indexB = proxyB->GetSupport(b2MulT(xfB.q, r));
+	b2Vec2 wB = b2Mul(xfB, proxyB->GetVertex(indexB));
+	b2Vec2 v = wA - wB;
+
+		// Sigma is the target distance between polygons
+	float sigma = b2Max(b2_polygonRadius, radius - b2_polygonRadius);
+	const float tolerance = 0.5f * b2_linearSlop;
+
+	// Main iteration loop.
+	const int32 k_maxIters = 20;
+	int32 iter = 0;
+	while (iter < k_maxIters && v.Length() - sigma > tolerance)
+	{
+		b2Assert(simplex.m_count < 3);
+
+		output->iterations += 1;
+
+		// Support in direction -v (A - B)
+		indexA = proxyA->GetSupport(b2MulT(xfA.q, -v));
+		wA = b2Mul(xfA, proxyA->GetVertex(indexA));
+		indexB = proxyB->GetSupport(b2MulT(xfB.q, v));
+		wB = b2Mul(xfB, proxyB->GetVertex(indexB));
+		b2Vec2 p = wA - wB;
+
+				// -v is a normal at p
+		v.Normalize();
+
+				// Intersect ray with plane
+		float vp = b2Dot(v, p);
+		float vr = b2Dot(v, r);
+		if (vp - sigma > lambda * vr)
+		{
+			if (vr <= 0.0f)
+			{
+				return false;
+			}
+
+			lambda = (vp - sigma) / vr;
+			if (lambda > 1.0f)
+			{
+				return false;
+			}
+
+			n = -v;
+			simplex.m_count = 0;
+		}
+
+				// Reverse simplex since it works with B - A.
+				// Shift by lambda * r because we want the closest point to the current clip point.
+				// Note that the support point p is not shifted because we want the plane equation
+				// to be formed in unshifted space.
+		b2SimplexVertex* vertex = vertices + simplex.m_count;
+		vertex->indexA = indexB;
+		vertex->wA = wB + lambda * r;
+		vertex->indexB = indexA;
+		vertex->wB = wA;
+		vertex->w = vertex->wB - vertex->wA;
+		vertex->a = 1.0f;
+		simplex.m_count += 1;
+
+		switch (simplex.m_count)
+		{
+			case 1:
+			break;
+
+			case 2:
+			simplex.Solve2();
+			break;
+
+			case 3:
+			simplex.Solve3();
+			break;
+
+			default:
+			b2Assert(false);
+		}
+
+		// If we have 3 points, then the origin is in the corresponding triangle.
+		if (simplex.m_count == 3)
+		{
+			// Overlap
+			return false;
+		}
+
+		// Get search direction.
+		v = simplex.GetClosestPoint();
+
+		// Iteration count is equated to the number of support point calls.
+		++iter;
+	}
+
+	if (iter == 0)
+	{
+		// Initial overlap
+		return false;
+	}
+
+	// Prepare output.
+	b2Vec2 pointA, pointB;
+	simplex.GetWitnessPoints(&pointB, &pointA);
+
+	if (v.LengthSquared() > 0.0f)
+	{
+		n = -v;
+		n.Normalize();
+	}
+
+	output->point = pointA + radiusA * n;
+	output->normal = n;
+	output->lambda = lambda;
+	output->iterations = iter;
+	return true;
 }

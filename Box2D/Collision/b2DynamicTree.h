@@ -16,6 +16,7 @@
 * 3. This notice may not be removed or altered from any source distribution.
 */
 
+/*
 #ifndef B2_DYNAMIC_TREE_H
 #define B2_DYNAMIC_TREE_H
 
@@ -285,5 +286,5 @@ inline void b2DynamicTree::RayCast(T* callback, const b2RayCastInput& input) con
 		}
 	}
 }
-
 #endif
+*/

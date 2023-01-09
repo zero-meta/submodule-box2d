@@ -16,36 +16,44 @@
 * 3. This notice may not be removed or altered from any source distribution.
 */
 
-#include <Box2D/Dynamics/b2Fixture.h>
-#include <Box2D/Dynamics/Contacts/b2Contact.h>
-#include <Box2D/Dynamics/b2World.h>
-#include <Box2D/Collision/Shapes/b2CircleShape.h>
-#include <Box2D/Collision/Shapes/b2EdgeShape.h>
-#include <Box2D/Collision/Shapes/b2PolygonShape.h>
-#include <Box2D/Collision/Shapes/b2ChainShape.h>
-#include <Box2D/Collision/b2BroadPhase.h>
-#include <Box2D/Collision/b2Collision.h>
-#include <Box2D/Common/b2BlockAllocator.h>
+#include "Box2D/Dynamics/b2Fixture.h"
+#include "Box2D/Common/b2BlockAllocator.h"
+#include "Box2D/Collision/b2BroadPhase.h"
+#include "Box2D/Collision/Shapes/b2CircleShape.h"
+#include "Box2D/Collision/b2Collision.h"
+#include "Box2D/Dynamics/Contacts/b2Contact.h"
+#include "Box2D/Collision/Shapes/b2EdgeShape.h"
+#include "Box2D/Collision/Shapes/b2PolygonShape.h"
+#include "Box2D/Dynamics/b2World.h"
 
 b2Fixture::b2Fixture()
 {
-	m_userData = NULL;
-	m_body = NULL;
-	m_next = NULL;
-	m_proxies = NULL;
-	m_proxyCount = 0;
-	m_shape = NULL;
+	m_body = nullptr;
+	m_next = nullptr;
+	m_shape = nullptr;
 	m_density = 0.0f;
+
+	static uint32 idGenerator = 0;
+	m_id = idGenerator++;
 }
 
 void b2Fixture::Create(b2BlockAllocator* allocator, b2Body* body, const b2FixtureDef* def)
 {
+#ifdef ENABLE_USER_DATA
 	m_userData = def->userData;
+#endif // ENABLE_USER_DATA
+
+#ifdef ENABLE_FRICTION
 	m_friction = def->friction;
+#endif // ENABLE_FRICTION
+
+#ifdef ENABLE_RESTITUTION
 	m_restitution = def->restitution;
+	m_restitutionThreshold = def->restitutionThreshold;
+#endif // ENABLE_RESTITUTION
 
 	m_body = body;
-	m_next = NULL;
+	m_next = nullptr;
 
 	m_filter = def->filter;
 
@@ -53,33 +61,15 @@ void b2Fixture::Create(b2BlockAllocator* allocator, b2Body* body, const b2Fixtur
 
 	m_shape = def->shape->Clone(allocator);
 
-	// Reserve proxy space
-	int32 childCount = m_shape->GetChildCount();
-	m_proxies = (b2FixtureProxy*)allocator->Allocate(childCount * sizeof(b2FixtureProxy));
-	for (int32 i = 0; i < childCount; ++i)
-	{
-		m_proxies[i].fixture = NULL;
-		m_proxies[i].proxyId = b2BroadPhase::e_nullProxy;
-	}
-	m_proxyCount = 0;
-
 	m_density = def->density;
 }
 
 void b2Fixture::Destroy(b2BlockAllocator* allocator)
 {
-	// The proxies must be destroyed before calling this.
-	b2Assert(m_proxyCount == 0);
-
-	// Free the proxy array.
-	int32 childCount = m_shape->GetChildCount();
-	allocator->Free(m_proxies, childCount * sizeof(b2FixtureProxy));
-	m_proxies = NULL;
-
 	// Free the child shape.
 	switch (m_shape->m_type)
 	{
-	case b2Shape::e_circle:
+		case b2Shape::e_circle:
 		{
 			b2CircleShape* s = (b2CircleShape*)m_shape;
 			s->~b2CircleShape();
@@ -87,7 +77,7 @@ void b2Fixture::Destroy(b2BlockAllocator* allocator)
 		}
 		break;
 
-	case b2Shape::e_edge:
+		case b2Shape::e_edge:
 		{
 			b2EdgeShape* s = (b2EdgeShape*)m_shape;
 			s->~b2EdgeShape();
@@ -95,7 +85,7 @@ void b2Fixture::Destroy(b2BlockAllocator* allocator)
 		}
 		break;
 
-	case b2Shape::e_polygon:
+		case b2Shape::e_polygon:
 		{
 			b2PolygonShape* s = (b2PolygonShape*)m_shape;
 			s->~b2PolygonShape();
@@ -103,22 +93,14 @@ void b2Fixture::Destroy(b2BlockAllocator* allocator)
 		}
 		break;
 
-	case b2Shape::e_chain:
-		{
-			b2ChainShape* s = (b2ChainShape*)m_shape;
-			s->~b2ChainShape();
-			allocator->Free(s, sizeof(b2ChainShape));
-		}
-		break;
-
-	default:
+		default:
 		b2Assert(false);
 		break;
 	}
 
-	m_shape = NULL;
+	m_shape = nullptr;
 }
-
+/*
 void b2Fixture::CreateProxies(b2BroadPhase* broadPhase, const b2Transform& xf)
 {
 	b2Assert(m_proxyCount == 0);
@@ -147,30 +129,10 @@ void b2Fixture::DestroyProxies(b2BroadPhase* broadPhase)
 	}
 
 	m_proxyCount = 0;
-}
+}*/
 
-void b2Fixture::Synchronize(b2BroadPhase* broadPhase, const b2Transform& transform1, const b2Transform& transform2)
-{
-	if (m_proxyCount == 0)
-	{	
-		return;
-	}
-
-	for (int32 i = 0; i < m_proxyCount; ++i)
-	{
-		b2FixtureProxy* proxy = m_proxies + i;
-
-		// Compute an AABB that covers the swept shape (may miss some rotation effect).
-		b2AABB aabb1, aabb2;
-		m_shape->ComputeAABB(&aabb1, transform1, proxy->childIndex);
-		m_shape->ComputeAABB(&aabb2, transform2, proxy->childIndex);
-	
-		proxy->aabb.Combine(aabb1, aabb2);
-
-		b2Vec2 displacement = transform2.p - transform1.p;
-
-		broadPhase->MoveProxy(proxy->proxyId, proxy->aabb, displacement);
-	}
+void b2Fixture::UpdateAABB() {
+	m_shape->ComputeAABB(&m_aabb, m_body->m_xf);
 }
 
 void b2Fixture::SetFilterData(const b2Filter& filter)
@@ -182,122 +144,131 @@ void b2Fixture::SetFilterData(const b2Filter& filter)
 
 void b2Fixture::Refilter()
 {
-	if (m_body == NULL)
+	if (m_body == nullptr)
 	{
 		return;
 	}
 
 	// Flag associated contacts for filtering.
-	b2ContactEdge* edge = m_body->GetContactList();
-	while (edge)
+	for (int32 i = 0; i < m_body->GetContactCount(); ++i)
 	{
-		b2Contact* contact = edge->contact;
+		b2Contact* contact = m_body->GetContact(i);
+
 		b2Fixture* fixtureA = contact->GetFixtureA();
 		b2Fixture* fixtureB = contact->GetFixtureB();
 		if (fixtureA == this || fixtureB == this)
 		{
 			contact->FlagForFiltering();
 		}
-
-		edge = edge->next;
 	}
 
 	b2World* world = m_body->GetWorld();
 
-	if (world == NULL)
+	if (world == nullptr)
 	{
 		return;
 	}
 
 	// Touch each proxy so that new pairs may be created
-	b2BroadPhase* broadPhase = &world->m_contactManager.m_broadPhase;
+	// TODO is this needed? (probably not)
+	/*b2BroadPhase* broadPhase = &world->m_contactManager.m_broadPhase;
 	for (int32 i = 0; i < m_proxyCount; ++i)
 	{
 		broadPhase->TouchProxy(m_proxies[i].proxyId);
-	}
+	}*/
 }
 
 void b2Fixture::SetSensor(bool sensor)
 {
 	if (sensor != m_isSensor)
 	{
+#ifdef ENABLE_SLEEPING
 		m_body->SetAwake(true);
+#endif // ENABLE_SLEEPING
 		m_isSensor = sensor;
 	}
 }
 
 void b2Fixture::Dump(int32 bodyIndex)
 {
-	b2Log("    b2FixtureDef fd;\n");
-	b2Log("    fd.friction = %.15lef;\n", m_friction);
-	b2Log("    fd.restitution = %.15lef;\n", m_restitution);
-	b2Log("    fd.density = %.15lef;\n", m_density);
-	b2Log("    fd.isSensor = bool(%d);\n", m_isSensor);
-	b2Log("    fd.filter.categoryBits = uint16(%d);\n", m_filter.categoryBits);
-	b2Log("    fd.filter.maskBits = uint16(%d);\n", m_filter.maskBits);
-	b2Log("    fd.filter.groupIndex = int16(%d);\n", m_filter.groupIndex);
+	b2Dump("    b2FixtureDef fd;\n");
+
+#ifdef ENABLE_FRICTION
+	b2Dump("    fd.friction = %.9g;\n", m_friction);
+#endif // ENABLE_FRICTION
+
+#ifdef ENABLE_RESTITUTION
+	b2Dump("    fd.restitution = %.9g;\n", m_restitution);
+	b2Dump("    fd.restitutionThreshold = %.9g;\n", m_restitutionThreshold);
+#endif // ENABLE_RESTITUTION
+
+	b2Dump("    fd.density = %.9g;\n", m_density);
+	b2Dump("    fd.isSensor = bool(%d);\n", m_isSensor);
+	b2Dump("    fd.filter.categoryBits = uint16(%d);\n", m_filter.categoryBits);
+	b2Dump("    fd.filter.maskBits = uint16(%d);\n", m_filter.maskBits);
+	b2Dump("    fd.filter.groupIndex = int16(%d);\n", m_filter.groupIndex);
 
 	switch (m_shape->m_type)
 	{
-	case b2Shape::e_circle:
+		case b2Shape::e_circle:
 		{
 			b2CircleShape* s = (b2CircleShape*)m_shape;
-			b2Log("    b2CircleShape shape;\n");
-			b2Log("    shape.m_radius = %.15lef;\n", s->m_radius);
-			b2Log("    shape.m_p.Set(%.15lef, %.15lef);\n", s->m_p.x, s->m_p.y);
+			b2Dump("    b2CircleShape shape;\n");
+			b2Dump("    shape.m_radius = %.9g;\n", s->m_radius);
+			b2Dump("    shape.m_p.Set(%.9g, %.9g);\n", s->m_p.x, s->m_p.y);
 		}
 		break;
 
-	case b2Shape::e_edge:
+		case b2Shape::e_edge:
 		{
 			b2EdgeShape* s = (b2EdgeShape*)m_shape;
-			b2Log("    b2EdgeShape shape;\n");
-			b2Log("    shape.m_radius = %.15lef;\n", s->m_radius);
-			b2Log("    shape.m_vertex0.Set(%.15lef, %.15lef);\n", s->m_vertex0.x, s->m_vertex0.y);
-			b2Log("    shape.m_vertex1.Set(%.15lef, %.15lef);\n", s->m_vertex1.x, s->m_vertex1.y);
-			b2Log("    shape.m_vertex2.Set(%.15lef, %.15lef);\n", s->m_vertex2.x, s->m_vertex2.y);
-			b2Log("    shape.m_vertex3.Set(%.15lef, %.15lef);\n", s->m_vertex3.x, s->m_vertex3.y);
-			b2Log("    shape.m_hasVertex0 = bool(%d);\n", s->m_hasVertex0);
-			b2Log("    shape.m_hasVertex3 = bool(%d);\n", s->m_hasVertex3);
+			b2Dump("    b2EdgeShape shape;\n");
+			b2Dump("    shape.m_radius = %.9g;\n", s->m_radius);
+			b2Dump("    shape.m_vertex0.Set(%.9g, %.9g);\n", s->m_vertex0.x, s->m_vertex0.y);
+			b2Dump("    shape.m_vertex1.Set(%.9g, %.9g);\n", s->m_vertex1.x, s->m_vertex1.y);
+			b2Dump("    shape.m_vertex2.Set(%.9g, %.9g);\n", s->m_vertex2.x, s->m_vertex2.y);
+			b2Dump("    shape.m_vertex3.Set(%.9g, %.9g);\n", s->m_vertex3.x, s->m_vertex3.y);
+			b2Dump("    shape.m_oneSided = bool(%d);\n", s->m_oneSided);
 		}
 		break;
 
-	case b2Shape::e_polygon:
+		case b2Shape::e_polygon:
 		{
 			b2PolygonShape* s = (b2PolygonShape*)m_shape;
-			b2Log("    b2PolygonShape shape;\n");
-			b2Log("    b2Vec2 vs[%d];\n", b2_maxPolygonVertices);
+			b2Dump("    b2PolygonShape shape;\n");
+			b2Dump("    b2Vec2 vs[%d];\n", b2_maxPolygonVertices);
 			for (int32 i = 0; i < s->m_count; ++i)
 			{
-				b2Log("    vs[%d].Set(%.15lef, %.15lef);\n", i, s->m_vertices[i].x, s->m_vertices[i].y);
+				b2Dump("    vs[%d].Set(%.9g, %.9g);\n", i, s->m_vertices[i].x, s->m_vertices[i].y);
 			}
-			b2Log("    shape.Set(vs, %d);\n", s->m_count);
+			b2Dump("    shape.Set(vs, %d);\n", s->m_count);
 		}
 		break;
 
+	/*
+	TODO can e_edge handle chains create from the geometry class?
 	case b2Shape::e_chain:
 		{
 			b2ChainShape* s = (b2ChainShape*)m_shape;
-			b2Log("    b2ChainShape shape;\n");
-			b2Log("    b2Vec2 vs[%d];\n", s->m_count);
+			b2Dump("    b2ChainShape shape;\n");
+			b2Dump("    b2Vec2 vs[%d];\n", s->m_count);
 			for (int32 i = 0; i < s->m_count; ++i)
 			{
-				b2Log("    vs[%d].Set(%.15lef, %.15lef);\n", i, s->m_vertices[i].x, s->m_vertices[i].y);
+				b2Dump("    vs[%d].Set(%.9g, %.9g);\n", i, s->m_vertices[i].x, s->m_vertices[i].y);
 			}
-			b2Log("    shape.CreateChain(vs, %d);\n", s->m_count);
-			b2Log("    shape.m_prevVertex.Set(%.15lef, %.15lef);\n", s->m_prevVertex.x, s->m_prevVertex.y);
-			b2Log("    shape.m_nextVertex.Set(%.15lef, %.15lef);\n", s->m_nextVertex.x, s->m_nextVertex.y);
-			b2Log("    shape.m_hasPrevVertex = bool(%d);\n", s->m_hasPrevVertex);
-			b2Log("    shape.m_hasNextVertex = bool(%d);\n", s->m_hasNextVertex);
+			b2Dump("    shape.CreateChain(vs, %d);\n", s->m_count);
+			b2Dump("    shape.m_prevVertex.Set(%.9g, %.9g);\n", s->m_prevVertex.x, s->m_prevVertex.y);
+			b2Dump("    shape.m_nextVertex.Set(%.9g, %.9g);\n", s->m_nextVertex.x, s->m_nextVertex.y);
 		}
 		break;
+	*/
 
-	default:
+		default:
 		return;
 	}
 
-	b2Log("\n");
-	b2Log("    fd.shape = &shape;\n");
-	b2Log("\n");
-	b2Log("    bodies[%d]->CreateFixture(&fd);\n", bodyIndex);
+	b2Dump("\n");
+	b2Dump("    fd.shape = &shape;\n");
+	b2Dump("\n");
+	b2Dump("    bodies[%d]->CreateFixture(&fd);\n", bodyIndex);
 }

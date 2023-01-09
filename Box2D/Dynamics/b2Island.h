@@ -19,9 +19,9 @@
 #ifndef B2_ISLAND_H
 #define B2_ISLAND_H
 
-#include <Box2D/Common/b2Math.h>
-#include <Box2D/Dynamics/b2Body.h>
-#include <Box2D/Dynamics/b2TimeStep.h>
+#include "Box2D/Dynamics/b2Body.h"
+#include "Box2D/Common/b2Math.h"
+#include "Box2D/Dynamics/b2TimeStep.h"
 
 class b2Contact;
 class b2Joint;
@@ -35,7 +35,7 @@ class b2Island
 {
 public:
 	b2Island(int32 bodyCapacity, int32 contactCapacity, int32 jointCapacity,
-			b2StackAllocator* allocator, b2ContactListener* listener);
+		b2StackAllocator* allocator, b2ContactListener* listener);
 	~b2Island();
 
 	void Clear()
@@ -45,7 +45,8 @@ public:
 		m_jointCount = 0;
 	}
 
-	void Solve(b2Profile* profile, const b2TimeStep& step, const b2Vec2& gravity, bool allowSleep);
+	void Solve(const b2TimeStep& step, const b2Vec2& gravity, bool allowSleep);
+	void SolveOrphan(b2Body* b, const b2TimeStep& step, const b2Vec2& gravity, bool allowSleep);
 
 	void SolveTOI(const b2TimeStep& subStep, int32 toiIndexA, int32 toiIndexB);
 

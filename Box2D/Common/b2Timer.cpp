@@ -17,88 +17,55 @@
 * 3. This notice may not be removed or altered from any source distribution.
 */
 
-#include <Box2D/Common/b2Timer.h>
+#include "Box2D/Common/b2Timer.h"
 
 #if defined(_WIN32)
 
-float64 b2Timer::s_invFrequency = 0.0f;
+double b2Timer::s_invFrequency = 0.0;
 
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
+
 #include <windows.h>
-
-typedef BOOL (WINAPI *SystemGetTimeFunc)(_Out_ LARGE_INTEGER *lpFrequency);
-SystemGetTimeFunc systemGetTimeFunc = ::QueryPerformanceCounter;
-SystemGetTimeFunc systemGetFreqFunc = ::QueryPerformanceFrequency;
-
-int64 b2Timer::GetTicks()
-{
-	LARGE_INTEGER largeInteger;
-	systemGetTimeFunc(&largeInteger);
-	return largeInteger.QuadPart;
-}
 
 b2Timer::b2Timer()
 {
 	LARGE_INTEGER largeInteger;
 
-	if (s_invFrequency == 0.0f)
+	if (s_invFrequency == 0.0)
 	{
-		systemGetFreqFunc(&largeInteger);
-		s_invFrequency = float64(largeInteger.QuadPart);
-		if (s_invFrequency > 0.0f)
+		QueryPerformanceFrequency(&largeInteger);
+		s_invFrequency = double(largeInteger.QuadPart);
+		if (s_invFrequency > 0.0)
 		{
-			s_invFrequency = 1000.0f / s_invFrequency;
+			s_invFrequency = 1000.0 / s_invFrequency;
 		}
 	}
 
-	m_start = GetTicks();
+	QueryPerformanceCounter(&largeInteger);
+	m_start = double(largeInteger.QuadPart);
 }
 
 void b2Timer::Reset()
 {
-	m_start = GetTicks();
+	LARGE_INTEGER largeInteger;
+	QueryPerformanceCounter(&largeInteger);
+	m_start = double(largeInteger.QuadPart);
 }
 
-float32 b2Timer::GetMilliseconds() const
+float b2Timer::GetMilliseconds() const
 {
-	int64 elapsed = GetTicks() - m_start;
-	return (float32)(s_invFrequency * elapsed);
+	LARGE_INTEGER largeInteger;
+	QueryPerformanceCounter(&largeInteger);
+	double count = double(largeInteger.QuadPart);
+	float ms = float(s_invFrequency * (count - m_start));
+	return ms;
 }
 
 #elif defined(__linux__) || defined (__APPLE__)
 
 #include <sys/time.h>
-#include <time.h>
-
-// systemGetTimeFunc is defined with external linkage to allow unit
-// test to mock out the system time function
-
-#if defined(__linux__)
-
-typedef int (*SystemGetTimeFunc)(clockid_t clk_id, struct timespec *tp);
-SystemGetTimeFunc systemGetTimeFunc = ::clock_gettime;
-
-#elif defined(__APPLE__)
-
-typedef int (*SystemGetTimeFunc)(struct timeval * tp, void * tzp);
-SystemGetTimeFunc systemGetTimeFunc = ::gettimeofday;
-
-#endif
-
-int64 b2Timer::GetTicks()
-{
-	static const int NSEC_PER_SEC = 1000000000;
-
-#ifdef __linux__
-	timespec ts;
-	systemGetTimeFunc(CLOCK_MONOTONIC,&ts);
-	return ((int64)ts.tv_sec) * NSEC_PER_SEC + ts.tv_nsec;
-#else
-	timeval t;
-	systemGetTimeFunc(&t, 0);
-	return ((int64)t.tv_sec) * NSEC_PER_SEC + t.tv_usec * 1000;
-#endif
-}
 
 b2Timer::b2Timer()
 {
@@ -107,13 +74,34 @@ b2Timer::b2Timer()
 
 void b2Timer::Reset()
 {
-	m_start = GetTicks();
+	timeval t;
+	gettimeofday(&t, 0);
+	m_start_sec = t.tv_sec;
+	m_start_usec = t.tv_usec;
 }
 
-float32 b2Timer::GetMilliseconds() const
+float b2Timer::GetMilliseconds() const
 {
-	static const float32 kTicksToMs = 0.000001f;
-	return kTicksToMs * (float32)(GetTicks() - m_start);
+	timeval t;
+	gettimeofday(&t, 0);
+	time_t start_sec = m_start_sec;
+	suseconds_t start_usec = m_start_usec;
+
+	// http://www.gnu.org/software/libc/manual/html_node/Elapsed-Time.html
+	if (t.tv_usec < start_usec)
+	{
+		int nsec = (start_usec - t.tv_usec) / 1000000 + 1;
+		start_usec -= 1000000 * nsec;
+		start_sec += nsec;
+	}
+
+	if (t.tv_usec - start_usec > 1000000)
+	{
+		int nsec = (t.tv_usec - start_usec) / 1000000;
+		start_usec += 1000000 * nsec;
+		start_sec -= nsec;
+	}
+	return 1000.0f * (t.tv_sec - start_sec) + 0.001f * (t.tv_usec - start_usec);
 }
 
 #else
@@ -126,7 +114,7 @@ void b2Timer::Reset()
 {
 }
 
-float32 b2Timer::GetMilliseconds() const
+float b2Timer::GetMilliseconds() const
 {
 	return 0.0f;
 }

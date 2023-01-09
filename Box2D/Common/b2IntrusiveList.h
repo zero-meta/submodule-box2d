@@ -18,7 +18,7 @@
 #ifndef B2_INTRUSIVE_LIST
 #define B2_INTRUSIVE_LIST
 
-#include <Box2D/Common/b2Settings.h>
+#include "Box2D/Common/b2Settings.h"
 
 // Whether to enable b2IntrusiveList::ValidateList().
 // Be careful when enabling this since this changes the size of
@@ -120,13 +120,13 @@ public:
 	/// Determine whether this list is empty or the node isn't in a list.
 	bool IsEmpty() const
 	{
-	  return GetNext() == this;
+		return GetNext() == this;
 	}
 
 	/// Determine whether this node is in a list or the list contains nodes.
 	bool InList() const
 	{
-	  return !IsEmpty();
+		return !IsEmpty();
 	}
 
 	/// Calculate the length of the list.
@@ -159,27 +159,27 @@ public:
 	bool ValidateList() const
 	{
 #if B2_INTRUSIVE_LIST_VALIDATE
-	  if (m_magic != k_magic) return false;
-	  const b2IntrusiveListNode * const terminator = GetTerminator();
-	  for (b2IntrusiveListNode *node = GetNext(); node != terminator;
-		   node = node->GetNext()) {
-		if (node->m_magic != k_magic) return false;
-	  }
-#endif  // B2_INTRUSIVE_LIST_VALIDATE
-	  return true;
-	}
-
-	/// Determine whether the specified node is present in this list.
-	bool FindNodeInList(b2IntrusiveListNode* const nodeToFind) const
-	{
+		if (m_magic != k_magic) return false;
 		const b2IntrusiveListNode * const terminator = GetTerminator();
 		for (b2IntrusiveListNode *node = GetNext(); node != terminator;
-			 node = node->GetNext())
-		{
-			if (nodeToFind == node) return true;
-		}
-		return false;
+			 node = node->GetNext()) {
+			if (node->m_magic != k_magic) return false;
 	}
+#endif  // B2_INTRUSIVE_LIST_VALIDATE
+	return true;
+}
+
+	/// Determine whether the specified node is present in this list.
+bool FindNodeInList(b2IntrusiveListNode* const nodeToFind) const
+{
+	const b2IntrusiveListNode * const terminator = GetTerminator();
+	for (b2IntrusiveListNode *node = GetNext(); node != terminator;
+		 node = node->GetNext())
+	{
+		if (nodeToFind == node) return true;
+	}
+	return false;
+}
 
 private:
 	/// Initialize the list node.
@@ -208,28 +208,28 @@ private:
 /// to NodeMemberName.
 /// See #B2_INTRUSIVE_LIST_NODE_GET_CLASS_ACCESSOR()
 #define B2_INTRUSIVE_LIST_GET_NODE(NodeMemberName) \
-	b2IntrusiveListNode* GetListNode() { return &NodeMemberName; } \
-	const b2IntrusiveListNode* GetListNode() const { return &NodeMemberName; }
+b2IntrusiveListNode* GetListNode() { return &NodeMemberName; } \
+const b2IntrusiveListNode* GetListNode() const { return &NodeMemberName; }
 
 /// Declares the member function FunctionName of Class to retrieve a pointer
 /// to a Class instance from a list node pointer.   NodeMemberName references
 /// the name of the b2IntrusiveListNode member of Class.
 #define B2_INTRUSIVE_LIST_NODE_GET_CLASS_ACCESSOR( \
-	Class, NodeMemberName, FunctionName) \
-	static Class* FunctionName(b2IntrusiveListNode *node) \
-	{ \
-		Class *cls = NULL; \
+Class, NodeMemberName, FunctionName) \
+static Class* FunctionName(b2IntrusiveListNode *node) \
+{ \
+	Class *cls = NULL; \
 		/* This effectively performs offsetof(Class, NodeMemberName) */ \
 		/* which ends up in the undefined behavior realm of C++ but in */ \
 		/* practice this works with most compilers. */ \
-		return reinterpret_cast<Class*>((uint8*)(node) - \
-										(uint8*)(&cls->NodeMemberName)); \
-	} \
-	\
-	static const Class* FunctionName(const b2IntrusiveListNode *node) \
-	{ \
-		return FunctionName(const_cast<b2IntrusiveListNode*>(node)); \
-	}
+	return reinterpret_cast<Class*>((uint8*)(node) - \
+		(uint8*)(&cls->NodeMemberName)); \
+} \
+\
+static const Class* FunctionName(const b2IntrusiveListNode *node) \
+{ \
+	return FunctionName(const_cast<b2IntrusiveListNode*>(node)); \
+}
 
 /// Declares the member function GetInstanceFromListNode() of Class to retrieve
 /// a pointer to a Class instance from a list node pointer.  NodeMemberName
@@ -366,4 +366,3 @@ private:
 };
 
 #endif // B2_INTRUSIVE_LIST
-

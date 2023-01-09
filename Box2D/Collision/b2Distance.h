@@ -20,19 +20,23 @@
 #ifndef B2_DISTANCE_H
 #define B2_DISTANCE_H
 
-#include <Box2D/Common/b2Math.h>
+#include "Box2D/Common/b2Math.h"
 
 class b2Shape;
 
 /// A distance proxy is used by the GJK algorithm.
 /// It encapsulates any shape.
-struct b2DistanceProxy
+struct B2_API b2DistanceProxy
 {
-	b2DistanceProxy() : m_vertices(NULL), m_count(0), m_radius(0.0f) {}
+	b2DistanceProxy() : m_vertices(nullptr), m_count(0), m_radius(0.0f) {}
 
 	/// Initialize the proxy using the given shape. The shape
 	/// must remain in scope while the proxy is in use.
-	void Set(const b2Shape* shape, int32 index);
+	void Set(const b2Shape* shape);
+
+	/// Initialize the proxy using a vertex cloud and radius. The vertices
+	/// must remain in scope while the proxy is in use.
+	void Set(const b2Vec2* vertices, int32 count, float radius);
 
 	/// Get the supporting vertex index in the given direction.
 	int32 GetSupport(const b2Vec2& d) const;
@@ -49,14 +53,14 @@ struct b2DistanceProxy
 	b2Vec2 m_buffer[2];
 	const b2Vec2* m_vertices;
 	int32 m_count;
-	float32 m_radius;
+	float m_radius;
 };
 
 /// Used to warm start b2Distance.
 /// Set count to zero on first call.
-struct b2SimplexCache
+struct B2_API b2SimplexCache
 {
-	float32 metric;		///< length or area
+	float metric;		///< length or area
 	uint16 count;
 	uint8 indexA[3];	///< vertices on shape A
 	uint8 indexB[3];	///< vertices on shape B
@@ -64,8 +68,8 @@ struct b2SimplexCache
 
 /// Input for b2Distance.
 /// You have to option to use the shape radii
-/// in the computation. Even 
-struct b2DistanceInput
+/// in the computation. Even
+struct B2_API b2DistanceInput
 {
 	b2DistanceProxy proxyA;
 	b2DistanceProxy proxyB;
@@ -75,21 +79,43 @@ struct b2DistanceInput
 };
 
 /// Output for b2Distance.
-struct b2DistanceOutput
+struct B2_API b2DistanceOutput
 {
 	b2Vec2 pointA;		///< closest point on shapeA
 	b2Vec2 pointB;		///< closest point on shapeB
-	float32 distance;
+	float distance;
 	int32 iterations;	///< number of GJK iterations used
 };
 
 /// Compute the closest points between two shapes. Supports any combination of:
 /// b2CircleShape, b2PolygonShape, b2EdgeShape. The simplex cache is input/output.
 /// On the first call set b2SimplexCache.count to zero.
-void b2Distance(b2DistanceOutput* output,
-				b2SimplexCache* cache, 
-				const b2DistanceInput* input);
+B2_API void b2Distance(b2DistanceOutput* output,
+	b2SimplexCache* cache,
+	const b2DistanceInput* input);
 
+/// Input parameters for b2ShapeCast
+struct B2_API b2ShapeCastInput
+{
+	b2DistanceProxy proxyA;
+	b2DistanceProxy proxyB;
+	b2Transform transformA;
+	b2Transform transformB;
+	b2Vec2 translationB;
+};
+
+/// Output results for b2ShapeCast
+struct B2_API b2ShapeCastOutput
+{
+	b2Vec2 point;
+	b2Vec2 normal;
+	float lambda;
+	int32 iterations;
+};
+
+/// Perform a linear shape cast of shape B moving and shape A fixed. Determines the hit point, normal, and translation fraction.
+/// @returns true if hit, false if there is no hit or an initial overlap
+B2_API bool b2ShapeCast(b2ShapeCastOutput* output, const b2ShapeCastInput* input);
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -107,10 +133,10 @@ inline const b2Vec2& b2DistanceProxy::GetVertex(int32 index) const
 inline int32 b2DistanceProxy::GetSupport(const b2Vec2& d) const
 {
 	int32 bestIndex = 0;
-	float32 bestValue = b2Dot(m_vertices[0], d);
+	float bestValue = b2Dot(m_vertices[0], d);
 	for (int32 i = 1; i < m_count; ++i)
 	{
-		float32 value = b2Dot(m_vertices[i], d);
+		float value = b2Dot(m_vertices[i], d);
 		if (value > bestValue)
 		{
 			bestIndex = i;
@@ -124,10 +150,10 @@ inline int32 b2DistanceProxy::GetSupport(const b2Vec2& d) const
 inline const b2Vec2& b2DistanceProxy::GetSupportVertex(const b2Vec2& d) const
 {
 	int32 bestIndex = 0;
-	float32 bestValue = b2Dot(m_vertices[0], d);
+	float bestValue = b2Dot(m_vertices[0], d);
 	for (int32 i = 1; i < m_count; ++i)
 	{
-		float32 value = b2Dot(m_vertices[i], d);
+		float value = b2Dot(m_vertices[i], d);
 		if (value > bestValue)
 		{
 			bestIndex = i;

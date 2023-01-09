@@ -19,10 +19,10 @@
 #ifndef B2_MOTOR_JOINT_H
 #define B2_MOTOR_JOINT_H
 
-#include <Box2D/Dynamics/Joints/b2Joint.h>
+#include "Box2D/Dynamics/Joints/b2Joint.h"
 
 /// Motor joint definition.
-struct b2MotorJointDef : public b2JointDef
+struct B2_API b2MotorJointDef : public b2JointDef
 {
 	b2MotorJointDef()
 	{
@@ -41,58 +41,58 @@ struct b2MotorJointDef : public b2JointDef
 	b2Vec2 linearOffset;
 
 	/// The bodyB angle minus bodyA angle in radians.
-	float32 angularOffset;
-	
+	float angularOffset;
+
 	/// The maximum motor force in N.
-	float32 maxForce;
+	float maxForce;
 
 	/// The maximum motor torque in N-m.
-	float32 maxTorque;
+	float maxTorque;
 
 	/// Position correction factor in the range [0,1].
-	float32 correctionFactor;
+	float correctionFactor;
 };
 
 /// A motor joint is used to control the relative motion
 /// between two bodies. A typical usage is to control the movement
 /// of a dynamic body with respect to the ground.
-class b2MotorJoint : public b2Joint
+class B2_API b2MotorJoint : public b2Joint
 {
 public:
-	b2Vec2 GetAnchorA() const;
-	b2Vec2 GetAnchorB() const;
+	b2Vec2 GetAnchorA() const override;
+	b2Vec2 GetAnchorB() const override;
 
-	b2Vec2 GetReactionForce(float32 inv_dt) const;
-	float32 GetReactionTorque(float32 inv_dt) const;
+	b2Vec2 GetReactionForce(float inv_dt) const override;
+	float GetReactionTorque(float inv_dt) const override;
 
 	/// Set/get the target linear offset, in frame A, in meters.
 	void SetLinearOffset(const b2Vec2& linearOffset);
 	const b2Vec2& GetLinearOffset() const;
 
 	/// Set/get the target angular offset, in radians.
-	void SetAngularOffset(float32 angularOffset);
-	float32 GetAngularOffset() const;
+	void SetAngularOffset(float angularOffset);
+	float GetAngularOffset() const;
 
 	/// Set the maximum friction force in N.
-	void SetMaxForce(float32 force);
+	void SetMaxForce(float force);
 
 	/// Get the maximum friction force in N.
-	float32 GetMaxForce() const;
+	float GetMaxForce() const;
 
 	/// Set the maximum friction torque in N*m.
-	void SetMaxTorque(float32 torque);
+	void SetMaxTorque(float torque);
 
 	/// Get the maximum friction torque in N*m.
-	float32 GetMaxTorque() const;
+	float GetMaxTorque() const;
 
 	/// Set the position correction factor in the range [0,1].
-	void SetCorrectionFactor(float32 factor);
+	void SetCorrectionFactor(float factor);
 
 	/// Get the position correction factor in the range [0,1].
-	float32 GetCorrectionFactor() const;
+	float GetCorrectionFactor() const;
 
 	/// Dump to b2Log
-	void Dump();
+	void Dump() override;
 
 protected:
 
@@ -100,18 +100,18 @@ protected:
 
 	b2MotorJoint(const b2MotorJointDef* def);
 
-	void InitVelocityConstraints(const b2SolverData& data);
-	void SolveVelocityConstraints(const b2SolverData& data);
-	bool SolvePositionConstraints(const b2SolverData& data);
+	void InitVelocityConstraints(const b2SolverData& data) override;
+	void SolveVelocityConstraints(const b2SolverData& data) override;
+	bool SolvePositionConstraints(const b2SolverData& data) override;
 
 	// Solver shared
 	b2Vec2 m_linearOffset;
-	float32 m_angularOffset;
+	float m_angularOffset;
 	b2Vec2 m_linearImpulse;
-	float32 m_angularImpulse;
-	float32 m_maxForce;
-	float32 m_maxTorque;
-	float32 m_correctionFactor;
+	float m_angularImpulse;
+	float m_maxForce;
+	float m_maxTorque;
+	float m_correctionFactor;
 
 	// Solver temp
 	int32 m_indexA;
@@ -121,13 +121,13 @@ protected:
 	b2Vec2 m_localCenterA;
 	b2Vec2 m_localCenterB;
 	b2Vec2 m_linearError;
-	float32 m_angularError;
-	float32 m_invMassA;
-	float32 m_invMassB;
-	float32 m_invIA;
-	float32 m_invIB;
+	float m_angularError;
+	float m_invMassA;
+	float m_invMassB;
+	float m_invIA;
+	float m_invIB;
 	b2Mat22 m_linearMass;
-	float32 m_angularMass;
+	float m_angularMass;
 };
 
 #endif

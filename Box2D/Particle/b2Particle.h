@@ -18,9 +18,9 @@
 #ifndef B2_PARTICLE
 #define B2_PARTICLE
 
-#include <Box2D/Common/b2Math.h>
-#include <Box2D/Common/b2Settings.h>
-#include <Box2D/Common/b2IntrusiveList.h>
+#include "Box2D/Common/b2Math.h"
+#include "Box2D/Common/b2Settings.h"
+#include "Box2D/Common/b2IntrusiveList.h"
 
 struct b2Color;
 class b2ParticleGroup;

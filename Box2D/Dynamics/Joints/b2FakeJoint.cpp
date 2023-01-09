@@ -16,9 +16,9 @@
 * 3. This notice may not be removed or altered from any source distribution.
 */
 
-#include <Box2D/Dynamics/Joints/b2FakeJoint.h>
-#include <Box2D/Dynamics/b2Body.h>
-#include <Box2D/Dynamics/b2TimeStep.h>
+#include "Box2D/Dynamics/Joints/b2FakeJoint.h"
+#include "Box2D/Dynamics/b2Body.h"
+#include "Box2D/Dynamics/b2TimeStep.h"
 
 void b2FakeJointDef::Initialize(b2Body* bA, b2Body* bB)
 {
@@ -69,12 +69,12 @@ float32 b2FakeJoint::GetReactionTorque(float32 inv_dt) const
 
 void b2FakeJoint::Dump()
 {
-	int32 indexA = m_bodyA->m_islandIndex;
-	int32 indexB = m_bodyB->m_islandIndex;
+  int32 indexA = m_bodyA->m_islandIndex;
+  int32 indexB = m_bodyB->m_islandIndex;
 
-	b2Log("  b2FakeJoint jd;\n");
-	b2Log("  jd.bodyA = bodies[%d];\n", indexA);
-	b2Log("  jd.bodyB = bodies[%d];\n", indexB);
-	b2Log("  jd.collideConnected = bool(%d);\n", m_collideConnected);
-	b2Log("  joints[%d] = m_world->CreateJoint(&jd);\n", m_index);
+  b2Dump("  b2FakeJoint jd;\n");
+  b2Dump("  jd.bodyA = bodies[%d];\n", indexA);
+  b2Dump("  jd.bodyB = bodies[%d];\n", indexB);
+  b2Dump("  jd.collideConnected = bool(%d);\n", m_collideConnected);
+  b2Dump("  joints[%d] = m_world->CreateJoint(&jd);\n", m_index);
 }

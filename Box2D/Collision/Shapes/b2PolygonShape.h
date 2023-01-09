@@ -20,22 +20,19 @@
 #ifndef B2_POLYGON_SHAPE_H
 #define B2_POLYGON_SHAPE_H
 
-#include <Box2D/Collision/Shapes/b2Shape.h>
+#include "Box2D/Collision/Shapes/b2Shape.h"
 
-/// A convex polygon. It is assumed that the interior of the polygon is to
+/// A solid convex polygon. It is assumed that the interior of the polygon is to
 /// the left of each edge.
 /// Polygons have a maximum number of vertices equal to b2_maxPolygonVertices.
 /// In most cases you should not need many vertices for a convex polygon.
-class b2PolygonShape : public b2Shape
+class B2_API b2PolygonShape : public b2Shape
 {
 public:
 	b2PolygonShape();
 
 	/// Implement b2Shape.
-	b2Shape* Clone(b2BlockAllocator* allocator) const;
-
-	/// @see b2Shape::GetChildCount
-	int32 GetChildCount() const;
+	b2Shape* Clone(b2BlockAllocator* allocator) const override;
 
 	/// Create a convex hull from the given array of local points.
 	/// The count must be in the range [3, b2_maxPolygonVertices].
@@ -50,36 +47,32 @@ public:
 	/// Build vertices to represent an axis-aligned box centered on the local origin.
 	/// @param hx the half-width.
 	/// @param hy the half-height.
-	void SetAsBox(float32 hx, float32 hy);
+	void SetAsBox(float hx, float hy);
 
 	/// Build vertices to represent an oriented box.
 	/// @param hx the half-width.
 	/// @param hy the half-height.
 	/// @param center the center of the box in local coordinates.
 	/// @param angle the rotation of the box in local coordinates.
-	void SetAsBox(float32 hx, float32 hy, const b2Vec2& center, float32 angle);
+	void SetAsBox(float hx, float hy, const b2Vec2& center, float angle);
 
 	/// @see b2Shape::TestPoint
-	bool TestPoint(const b2Transform& transform, const b2Vec2& p) const;
+	bool TestPoint(const b2Transform& transform, const b2Vec2& p) const override;
 
 	// @see b2Shape::ComputeDistance
-	void ComputeDistance(const b2Transform& xf, const b2Vec2& p, float32* distance, b2Vec2* normal, int32 childIndex) const;
+	void ComputeDistance(const b2Transform& xf, const b2Vec2& p, float32* distance, b2Vec2* normal) const override;
 
 	/// Implement b2Shape.
+	/// @note because the polygon is solid, rays that start inside do not hit because the normal is
+	/// not defined.
 	bool RayCast(b2RayCastOutput* output, const b2RayCastInput& input,
-					const b2Transform& transform, int32 childIndex) const;
+		const b2Transform& transform) const override;
 
 	/// @see b2Shape::ComputeAABB
-	void ComputeAABB(b2AABB* aabb, const b2Transform& transform, int32 childIndex) const;
+	void ComputeAABB(b2AABB* aabb, const b2Transform& transform) const override;
 
 	/// @see b2Shape::ComputeMass
-	void ComputeMass(b2MassData* massData, float32 density) const;
-
-	/// Get the vertex count.
-	int32 GetVertexCount() const { return m_count; }
-
-	/// Get a vertex by index.
-	const b2Vec2& GetVertex(int32 index) const;
+	void ComputeMass(b2MassData* massData, float density) const override;
 
 	/// Validate convexity. This is a very time consuming operation.
 	/// @returns true if valid
@@ -113,12 +106,6 @@ inline b2PolygonShape::b2PolygonShape()
 	m_centroid.SetZero();
 }
 
-inline const b2Vec2& b2PolygonShape::GetVertex(int32 index) const
-{
-	b2Assert(0 <= index && index < m_count);
-	return m_vertices[index];
-}
-
 #if LIQUIDFUN_EXTERNAL_LANGUAGE_API
 inline void b2PolygonShape::SetCentroid(float32 x, float32 y)
 {
@@ -126,10 +113,10 @@ inline void b2PolygonShape::SetCentroid(float32 x, float32 y)
 }
 
 inline void b2PolygonShape::SetAsBox(float32 hx,
-										 float32 hy,
-										 float32 centerX,
-										 float32 centerY,
-										 float32 angle) {
+									 float32 hy,
+									 float32 centerX,
+									 float32 centerY,
+									 float32 angle) {
 	SetAsBox(hx, hy, b2Vec2(centerX, centerY), angle);
 }
 #endif // LIQUIDFUN_EXTERNAL_LANGUAGE_API

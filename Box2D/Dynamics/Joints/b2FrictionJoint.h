@@ -19,10 +19,10 @@
 #ifndef B2_FRICTION_JOINT_H
 #define B2_FRICTION_JOINT_H
 
-#include <Box2D/Dynamics/Joints/b2Joint.h>
+#include "Box2D/Dynamics/Joints/b2Joint.h"
 
 /// Friction joint definition.
-struct b2FrictionJointDef : public b2JointDef
+struct B2_API b2FrictionJointDef : public b2JointDef
 {
 	b2FrictionJointDef()
 	{
@@ -44,22 +44,22 @@ struct b2FrictionJointDef : public b2JointDef
 	b2Vec2 localAnchorB;
 
 	/// The maximum friction force in N.
-	float32 maxForce;
+	float maxForce;
 
 	/// The maximum friction torque in N-m.
-	float32 maxTorque;
+	float maxTorque;
 };
 
 /// Friction joint. This is used for top-down friction.
 /// It provides 2D translational friction and angular friction.
-class b2FrictionJoint : public b2Joint
+class B2_API b2FrictionJoint : public b2Joint
 {
 public:
-	b2Vec2 GetAnchorA() const;
-	b2Vec2 GetAnchorB() const;
+	b2Vec2 GetAnchorA() const override;
+	b2Vec2 GetAnchorB() const override;
 
-	b2Vec2 GetReactionForce(float32 inv_dt) const;
-	float32 GetReactionTorque(float32 inv_dt) const;
+	b2Vec2 GetReactionForce(float inv_dt) const override;
+	float GetReactionTorque(float inv_dt) const override;
 
 	/// The local anchor point relative to bodyA's origin.
 	const b2Vec2& GetLocalAnchorA() const { return m_localAnchorA; }
@@ -68,19 +68,19 @@ public:
 	const b2Vec2& GetLocalAnchorB() const  { return m_localAnchorB; }
 
 	/// Set the maximum friction force in N.
-	void SetMaxForce(float32 force);
+	void SetMaxForce(float force);
 
 	/// Get the maximum friction force in N.
-	float32 GetMaxForce() const;
+	float GetMaxForce() const;
 
 	/// Set the maximum friction torque in N*m.
-	void SetMaxTorque(float32 torque);
+	void SetMaxTorque(float torque);
 
 	/// Get the maximum friction torque in N*m.
-	float32 GetMaxTorque() const;
+	float GetMaxTorque() const;
 
 	/// Dump joint to dmLog
-	void Dump();
+	void Dump() override;
 
 protected:
 
@@ -88,18 +88,18 @@ protected:
 
 	b2FrictionJoint(const b2FrictionJointDef* def);
 
-	void InitVelocityConstraints(const b2SolverData& data);
-	void SolveVelocityConstraints(const b2SolverData& data);
-	bool SolvePositionConstraints(const b2SolverData& data);
+	void InitVelocityConstraints(const b2SolverData& data) override;
+	void SolveVelocityConstraints(const b2SolverData& data) override;
+	bool SolvePositionConstraints(const b2SolverData& data) override;
 
 	b2Vec2 m_localAnchorA;
 	b2Vec2 m_localAnchorB;
 
 	// Solver shared
 	b2Vec2 m_linearImpulse;
-	float32 m_angularImpulse;
-	float32 m_maxForce;
-	float32 m_maxTorque;
+	float m_angularImpulse;
+	float m_maxForce;
+	float m_maxTorque;
 
 	// Solver temp
 	int32 m_indexA;
@@ -108,12 +108,12 @@ protected:
 	b2Vec2 m_rB;
 	b2Vec2 m_localCenterA;
 	b2Vec2 m_localCenterB;
-	float32 m_invMassA;
-	float32 m_invMassB;
-	float32 m_invIA;
-	float32 m_invIB;
+	float m_invMassA;
+	float m_invMassB;
+	float m_invIA;
+	float m_invIB;
 	b2Mat22 m_linearMass;
-	float32 m_angularMass;
+	float m_angularMass;
 };
 
 #endif

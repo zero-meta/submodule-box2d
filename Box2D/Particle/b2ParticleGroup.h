@@ -18,7 +18,7 @@
 #ifndef B2_PARTICLE_GROUP
 #define B2_PARTICLE_GROUP
 
-#include <Box2D/Particle/b2Particle.h>
+#include "Box2D/Particle/b2Particle.h"
 
 class b2Shape;
 class b2World;
@@ -322,7 +322,7 @@ inline b2ParticleGroup::~b2ParticleGroup()
 
 inline int32 b2ParticleGroup::GetBufferIndex() const
 {
-  return m_firstIndex;
+	return m_firstIndex;
 }
 
 inline uint32 b2ParticleGroup::GetGroupFlags() const

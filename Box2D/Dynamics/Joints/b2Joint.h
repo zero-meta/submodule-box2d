@@ -19,9 +19,10 @@
 #ifndef B2_JOINT_H
 #define B2_JOINT_H
 
-#include <Box2D/Common/b2Math.h>
+#include "Box2D/Common/b2Math.h"
 
 class b2Body;
+class b2Draw;
 class b2Joint;
 struct b2SolverData;
 class b2BlockAllocator;
@@ -36,26 +37,18 @@ enum b2JointType
 	e_mouseJoint,
 	e_gearJoint,
 	e_wheelJoint,
-    e_weldJoint,
+	e_weldJoint,
 	e_frictionJoint,
 	e_ropeJoint,
 	e_motorJoint,
 	e_fakeJoint
 };
 
-enum b2LimitState
-{
-	e_inactiveLimit,
-	e_atLowerLimit,
-	e_atUpperLimit,
-	e_equalLimits
-};
-
-struct b2Jacobian
+struct B2_API b2Jacobian
 {
 	b2Vec2 linear;
-	float32 angularA;
-	float32 angularB;
+	float angularA;
+	float angularB;
 };
 
 /// A joint edge is used to connect bodies and joints together
@@ -63,7 +56,7 @@ struct b2Jacobian
 /// is an edge. A joint edge belongs to a doubly linked list
 /// maintained in each attached body. Each joint has two joint
 /// nodes, one for each attached body.
-struct b2JointEdge
+struct B2_API b2JointEdge
 {
 	b2Body* other;			///< provides quick access to the other body attached.
 	b2Joint* joint;			///< the joint
@@ -72,14 +65,13 @@ struct b2JointEdge
 };
 
 /// Joint definitions are used to construct joints.
-struct b2JointDef
+struct B2_API b2JointDef
 {
 	b2JointDef()
 	{
 		type = e_unknownJoint;
-		userData = NULL;
-		bodyA = NULL;
-		bodyB = NULL;
+		bodyA = nullptr;
+		bodyB = nullptr;
 		collideConnected = false;
 	}
 
@@ -99,9 +91,19 @@ struct b2JointDef
 	bool collideConnected;
 };
 
+/// Utility to compute linear stiffness values from frequency and damping ratio
+B2_API void b2LinearStiffness(float& stiffness, float& damping,
+	float frequencyHertz, float dampingRatio,
+	const b2Body* bodyA, const b2Body* bodyB);
+
+/// Utility to compute rotational stiffness values frequency and damping ratio
+B2_API void b2AngularStiffness(float& stiffness, float& damping,
+	float frequencyHertz, float dampingRatio,
+	const b2Body* bodyA, const b2Body* bodyB);
+
 /// The base joint class. Joints are used to constraint two bodies together in
 /// various fashions. Some joints also feature limits and motors.
-class b2Joint
+class B2_API b2Joint
 {
 public:
 
@@ -121,10 +123,10 @@ public:
 	virtual b2Vec2 GetAnchorB() const = 0;
 
 	/// Get the reaction force on bodyB at the joint anchor in Newtons.
-	virtual b2Vec2 GetReactionForce(float32 inv_dt) const = 0;
+	virtual b2Vec2 GetReactionForce(float inv_dt) const = 0;
 
 	/// Get the reaction torque on bodyB in N*m.
-	virtual float32 GetReactionTorque(float32 inv_dt) const = 0;
+	virtual float GetReactionTorque(float inv_dt) const = 0;
 
 	/// Get the next joint the world joint list.
 	b2Joint* GetNext();
@@ -136,8 +138,8 @@ public:
 	/// Set the user data pointer.
 	void SetUserData(void* data);
 
-	/// Short-cut function to determine if either body is inactive.
-	bool IsActive() const;
+	/// Short-cut function to determine if either body is enabled.
+	bool IsEnabled() const;
 
 	/// Get collide connected.
 	/// Note: modifying the collide connect flag won't work correctly because
@@ -145,10 +147,13 @@ public:
 	bool GetCollideConnected() const;
 
 	/// Dump this joint to the log file.
-	virtual void Dump() { b2Log("// Dump is not supported for this joint type.\n"); }
+	virtual void Dump() { b2Dump("// Dump is not supported for this joint type.\n"); }
 
 	/// Shift the origin for any points stored in world coordinates.
 	virtual void ShiftOrigin(const b2Vec2& newOrigin) { B2_NOT_USED(newOrigin);  }
+
+	/// Debug draw this joint
+	virtual void Draw(b2Draw* draw) const;
 
 protected:
 	friend class b2World;

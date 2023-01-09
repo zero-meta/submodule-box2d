@@ -233,6 +233,7 @@
     <ClInclude Include="Common\b2IntrusiveList.h" />
     <ClInclude Include="Common\b2Math.h" />
     <ClInclude Include="Common\b2Settings.h" />
+    <ClInclude Include="Common\b2Geometry.h" />
     <ClInclude Include="Common\b2SlabAllocator.h" />
     <ClInclude Include="Common\b2StackAllocator.h" />
     <ClInclude Include="Common\b2Stat.h" />
@@ -287,6 +288,7 @@
     <ClCompile Include="Common\b2FreeList.cpp"  />
     <ClCompile Include="Common\b2Math.cpp"  />
     <ClCompile Include="Common\b2Settings.cpp"  />
+    <ClCompile Include="Common\b2Geometry.cpp"  />
     <ClCompile Include="Common\b2StackAllocator.cpp"  />
     <ClCompile Include="Common\b2Stat.cpp"  />
     <ClCompile Include="Common\b2Timer.cpp"  />

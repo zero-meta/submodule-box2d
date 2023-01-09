@@ -16,28 +16,78 @@
 * 3. This notice may not be removed or altered from any source distribution.
 */
 
-#include <Box2D/Dynamics/Joints/b2Joint.h>
-#include <Box2D/Dynamics/Joints/b2DistanceJoint.h>
-#include <Box2D/Dynamics/Joints/b2WheelJoint.h>
-#include <Box2D/Dynamics/Joints/b2MouseJoint.h>
-#include <Box2D/Dynamics/Joints/b2RevoluteJoint.h>
-#include <Box2D/Dynamics/Joints/b2PrismaticJoint.h>
-#include <Box2D/Dynamics/Joints/b2PulleyJoint.h>
-#include <Box2D/Dynamics/Joints/b2GearJoint.h>
-#include <Box2D/Dynamics/Joints/b2WeldJoint.h>
-#include <Box2D/Dynamics/Joints/b2FakeJoint.h>
-#include <Box2D/Dynamics/Joints/b2FrictionJoint.h>
-#include <Box2D/Dynamics/Joints/b2RopeJoint.h>
-#include <Box2D/Dynamics/Joints/b2MotorJoint.h>
-#include <Box2D/Dynamics/b2Body.h>
-#include <Box2D/Dynamics/b2World.h>
-#include <Box2D/Common/b2BlockAllocator.h>
+#include "Box2D/Common/b2BlockAllocator.h"
+#include "Box2D/Dynamics/b2Body.h"
+#include "Box2D/Dynamics/Joints/b2DistanceJoint.h"
+#include "Box2D/Common/b2Draw.h"
+#include "Box2D/Dynamics/Joints/b2FrictionJoint.h"
+#include "Box2D/Dynamics/Joints/b2GearJoint.h"
+#include "Box2D/Dynamics/Joints/b2MotorJoint.h"
+#include "Box2D/Dynamics/Joints/b2MouseJoint.h"
+#include "Box2D/Dynamics/Joints/b2PrismaticJoint.h"
+#include "Box2D/Dynamics/Joints/b2PulleyJoint.h"
+#include "Box2D/Dynamics/Joints/b2RevoluteJoint.h"
+#include "Box2D/Dynamics/Joints/b2WeldJoint.h"
+#include "Box2D/Dynamics/Joints/b2WheelJoint.h"
+#include "Box2D/Dynamics/Joints/b2FakeJoint.h"
+#include "Box2D/Dynamics/Joints/b2RopeJoint.h"
+#include "Box2D/Dynamics/b2World.h"
 
 #include <new>
 
+void b2LinearStiffness(float& stiffness, float& damping,
+	float frequencyHertz, float dampingRatio,
+	const b2Body* bodyA, const b2Body* bodyB)
+{
+	float massA = bodyA->GetMass();
+	float massB = bodyB->GetMass();
+	float mass;
+	if (massA > 0.0f && massB > 0.0f)
+	{
+		mass = massA * massB / (massA + massB);
+	}
+	else if (massA > 0.0f)
+	{
+		mass = massA;
+	}
+	else
+	{
+		mass = massB;
+	}
+
+	float omega = 2.0f * b2_pi * frequencyHertz;
+	stiffness = mass * omega * omega;
+	damping = 2.0f * mass * dampingRatio * omega;
+}
+
+void b2AngularStiffness(float& stiffness, float& damping,
+	float frequencyHertz, float dampingRatio,
+	const b2Body* bodyA, const b2Body* bodyB)
+{
+	float IA = bodyA->GetInertia();
+	float IB = bodyB->GetInertia();
+	float I;
+	if (IA > 0.0f && IB > 0.0f)
+	{
+		I = IA * IB / (IA + IB);
+	}
+	else if (IA > 0.0f)
+	{
+		I = IA;
+	}
+	else
+	{
+		I = IB;
+	}
+
+	float omega = 2.0f * b2_pi * frequencyHertz;
+	stiffness = I * omega * omega;
+	damping = 2.0f * I * dampingRatio * omega;
+}
+
 b2Joint* b2Joint::Create(const b2JointDef* def, b2BlockAllocator* allocator)
 {
-	b2Joint* joint = NULL;
+	b2Joint* joint = nullptr;
 
 	switch (def->type)
 	{
@@ -103,7 +153,7 @@ b2Joint* b2Joint::Create(const b2JointDef* def, b2BlockAllocator* allocator)
 			joint = new (mem) b2FakeJoint(static_cast<const b2FakeJointDef*>(def));
 		}
 		break;
-        
+
 	case e_frictionJoint:
 		{
 			void* mem = allocator->Allocate(sizeof(b2FrictionJoint));
@@ -182,6 +232,10 @@ void b2Joint::Destroy(b2Joint* joint, b2BlockAllocator* allocator)
 		allocator->Free(joint, sizeof(b2MotorJoint));
 		break;
 
+	case e_fakeJoint:
+		allocator->Free(joint, sizeof(b2FakeJoint));
+		break;
+
 	default:
 		b2Assert(false);
 		break;
@@ -193,8 +247,8 @@ b2Joint::b2Joint(const b2JointDef* def)
 	b2Assert(def->bodyA != def->bodyB);
 
 	m_type = def->type;
-	m_prev = NULL;
-	m_next = NULL;
+	m_prev = nullptr;
+	m_next = nullptr;
 	m_bodyA = def->bodyA;
 	m_bodyB = def->bodyB;
 	m_index = 0;
@@ -202,18 +256,66 @@ b2Joint::b2Joint(const b2JointDef* def)
 	m_islandFlag = false;
 	m_userData = def->userData;
 
-	m_edgeA.joint = NULL;
-	m_edgeA.other = NULL;
-	m_edgeA.prev = NULL;
-	m_edgeA.next = NULL;
+	m_edgeA.joint = nullptr;
+	m_edgeA.other = nullptr;
+	m_edgeA.prev = nullptr;
+	m_edgeA.next = nullptr;
 
-	m_edgeB.joint = NULL;
-	m_edgeB.other = NULL;
-	m_edgeB.prev = NULL;
-	m_edgeB.next = NULL;
+	m_edgeB.joint = nullptr;
+	m_edgeB.other = nullptr;
+	m_edgeB.prev = nullptr;
+	m_edgeB.next = nullptr;
 }
 
-bool b2Joint::IsActive() const
+bool b2Joint::IsEnabled() const
 {
-	return m_bodyA->IsActive() && m_bodyB->IsActive();
+	return m_bodyA->IsEnabled() && m_bodyB->IsEnabled();
+}
+
+void b2Joint::Draw(b2Draw* draw) const
+{
+	const b2Transform& xf1 = m_bodyA->GetTransform();
+	const b2Transform& xf2 = m_bodyB->GetTransform();
+	b2Vec2 x1 = xf1.p;
+	b2Vec2 x2 = xf2.p;
+	b2Vec2 p1 = GetAnchorA();
+	b2Vec2 p2 = GetAnchorB();
+
+	b2Color color(0.5f, 0.8f, 0.8f);
+
+	switch (m_type)
+	{
+		case e_distanceJoint:
+		draw->DrawSegment(p1, p2, color);
+		break;
+
+		case e_pulleyJoint:
+		{
+			b2PulleyJoint* pulley = (b2PulleyJoint*)this;
+			b2Vec2 s1 = pulley->GetGroundAnchorA();
+			b2Vec2 s2 = pulley->GetGroundAnchorB();
+			draw->DrawSegment(s1, p1, color);
+			draw->DrawSegment(s2, p2, color);
+			draw->DrawSegment(s1, s2, color);
+		}
+		break;
+
+		case e_mouseJoint:
+		{
+			b2Color c;
+			c.Set(0.0f, 1.0f, 0.0f);
+			draw->DrawPoint(p1, 4.0f, c);
+			draw->DrawPoint(p2, 4.0f, c);
+
+			c.Set(0.8f, 0.8f, 0.8f);
+			draw->DrawSegment(p1, p2, c);
+
+		}
+		break;
+
+		default:
+		draw->DrawSegment(x1, p1, color);
+		draw->DrawSegment(p1, p2, color);
+		draw->DrawSegment(x2, p2, color);
+	}
 }

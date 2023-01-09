@@ -18,8 +18,8 @@
 #ifndef B2_FREE_LIST_H
 #define B2_FREE_LIST_H
 
-#include <Box2D/Common/b2IntrusiveList.h>
-#include <Box2D/Common/b2Settings.h>
+#include "Box2D/Common/b2IntrusiveList.h"
+#include "Box2D/Common/b2Settings.h"
 
 /// When B2_FREE_LIST_CHECK_ALLOCATED_ON_FREE is 1, b2FreeList::Free() will
 /// check that the deallocated node was allocated from the freelist.

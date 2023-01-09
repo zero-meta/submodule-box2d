@@ -20,21 +20,29 @@
 #ifndef B2_DRAW_H
 #define B2_DRAW_H
 
-#include <Box2D/Common/b2Math.h>
-#include <Box2D/Particle/b2Particle.h>
+#include "Box2D/Common/b2Math.h"
+#include "Box2D/Particle/b2Particle.h"
 
 /// Color for debug drawing. Each value has the range [0,1].
-struct b2Color
+struct B2_API b2Color
 {
 	b2Color() {}
-	b2Color(float32 r, float32 g, float32 b) : r(r), g(g), b(b) {}
-	void Set(float32 ri, float32 gi, float32 bi) { r = ri; g = gi; b = bi; }
-	float32 r, g, b;
+	b2Color(float rIn, float gIn, float bIn, float aIn = 1.0f)
+	{
+		r = rIn; g = gIn; b = bIn; a = aIn;
+	}
+
+	void Set(float rIn, float gIn, float bIn, float aIn = 1.0f)
+	{
+		r = rIn; g = gIn; b = bIn; a = aIn;
+	}
+
+	float r, g, b, a;
 };
 
 /// Implement and register this class with a b2World to provide debug drawing of physics
 /// entities in your game.
-class b2Draw
+class B2_API b2Draw
 {
 public:
 	b2Draw();
@@ -47,7 +55,7 @@ public:
 		e_jointBit				= 0x0002,	///< draw joint connections
 		e_aabbBit				= 0x0004,	///< draw axis aligned bounding boxes
 		e_pairBit				= 0x0008,	///< draw broad-phase pairs
-		e_centerOfMassBit			= 0x0010,	///< draw center of mass frame
+		e_centerOfMassBit		= 0x0010,	///< draw center of mass frame
 		e_particleBit				= 0x0020  ///< draw particles
 	};
 
@@ -70,10 +78,10 @@ public:
 	virtual void DrawSolidPolygon(const b2Vec2* vertices, int32 vertexCount, const b2Color& color) = 0;
 
 	/// Draw a circle.
-	virtual void DrawCircle(const b2Vec2& center, float32 radius, const b2Color& color) = 0;
+	virtual void DrawCircle(const b2Vec2& center, float radius, const b2Color& color) = 0;
 
 	/// Draw a solid circle.
-	virtual void DrawSolidCircle(const b2Vec2& center, float32 radius, const b2Vec2& axis, const b2Color& color) = 0;
+	virtual void DrawSolidCircle(const b2Vec2& center, float radius, const b2Vec2& axis, const b2Color& color) = 0;
 
 	/// Draw a particle array
 	virtual void DrawParticles(const b2Vec2 *centers, float32 radius, const b2ParticleColor *colors, int32 count) = 0;
@@ -84,6 +92,9 @@ public:
 	/// Draw a transform. Choose your own length scale.
 	/// @param xf a transform.
 	virtual void DrawTransform(const b2Transform& xf) = 0;
+
+	/// Draw a point.
+	virtual void DrawPoint(const b2Vec2& p, float size, const b2Color& color) = 0;
 
 protected:
 	uint32 m_drawFlags;

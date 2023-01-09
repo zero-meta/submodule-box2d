@@ -15,7 +15,7 @@
 * misrepresented as being the original software.
 * 3. This notice may not be removed or altered from any source distribution.
 */
-
+/*
 #include <Box2D/Dynamics/Contacts/b2EdgeAndCircleContact.h>
 #include <Box2D/Common/b2BlockAllocator.h>
 #include <Box2D/Dynamics/b2Fixture.h>
@@ -47,3 +47,4 @@ void b2EdgeAndCircleContact::Evaluate(b2Manifold* manifold, const b2Transform& x
 								(b2EdgeShape*)m_fixtureA->GetShape(), xfA,
 								(b2CircleShape*)m_fixtureB->GetShape(), xfB);
 }
+*/

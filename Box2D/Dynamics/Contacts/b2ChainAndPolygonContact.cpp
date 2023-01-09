@@ -16,6 +16,7 @@
 * 3. This notice may not be removed or altered from any source distribution.
 */
 
+/*
 #include <Box2D/Dynamics/Contacts/b2ChainAndPolygonContact.h>
 #include <Box2D/Common/b2BlockAllocator.h>
 #include <Box2D/Dynamics/b2Fixture.h>
@@ -51,3 +52,4 @@ void b2ChainAndPolygonContact::Evaluate(b2Manifold* manifold, const b2Transform&
 	b2CollideEdgeAndPolygon(	manifold, &edge, xfA,
 								(b2PolygonShape*)m_fixtureB->GetShape(), xfB);
 }
+*/

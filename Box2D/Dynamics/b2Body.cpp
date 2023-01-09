@@ -17,11 +17,11 @@
 * 3. This notice may not be removed or altered from any source distribution.
 */
 
-#include <Box2D/Dynamics/b2Body.h>
-#include <Box2D/Dynamics/b2Fixture.h>
-#include <Box2D/Dynamics/b2World.h>
-#include <Box2D/Dynamics/Contacts/b2Contact.h>
-#include <Box2D/Dynamics/Joints/b2Joint.h>
+#include "Box2D/Dynamics/b2Body.h"
+#include "Box2D/Dynamics/Contacts/b2Contact.h"
+#include "Box2D/Dynamics/b2Fixture.h"
+#include "Box2D/Dynamics/Joints/b2Joint.h"
+#include "Box2D/Dynamics/b2World.h"
 
 b2Body::b2Body(const b2BodyDef* bd, b2World* world)
 {
@@ -29,8 +29,11 @@ b2Body::b2Body(const b2BodyDef* bd, b2World* world)
 	b2Assert(bd->linearVelocity.IsValid());
 	b2Assert(b2IsValid(bd->angle));
 	b2Assert(b2IsValid(bd->angularVelocity));
+
+#ifdef ENABLE_DAMPING
 	b2Assert(b2IsValid(bd->angularDamping) && bd->angularDamping >= 0.0f);
 	b2Assert(b2IsValid(bd->linearDamping) && bd->linearDamping >= 0.0f);
+#endif // ENABLE_DAMPING
 
 	m_flags = 0;
 
@@ -42,17 +45,21 @@ b2Body::b2Body(const b2BodyDef* bd, b2World* world)
 	{
 		m_flags |= e_fixedRotationFlag;
 	}
+
+#ifdef ENABLE_SLEEPING
 	if (bd->allowSleep)
 	{
 		m_flags |= e_autoSleepFlag;
 	}
-	if (bd->awake)
+	if (bd->awake && bd->type != b2_staticBody)
 	{
 		m_flags |= e_awakeFlag;
 	}
-	if (bd->active)
+#endif // ENABLE_SLEEPING
+
+	if (bd->enabled)
 	{
-		m_flags |= e_activeFlag;
+		m_flags |= e_enabledFlag;
 	}
 
 	m_world = world;
@@ -68,42 +75,46 @@ b2Body::b2Body(const b2BodyDef* bd, b2World* world)
 	m_sweep.a = bd->angle;
 	m_sweep.alpha0 = 0.0f;
 
-	m_jointList = NULL;
-	m_contactList = NULL;
-	m_prev = NULL;
-	m_next = NULL;
+	m_jointList = nullptr;
+	m_contactCount = 0;
+	m_contactCapacity = 2;
+	m_contactList = (b2Contact**) b2Alloc(m_contactCapacity * sizeof(b2Contact*));
+
+	m_prev = nullptr;
+	m_next = nullptr;
 
 	m_linearVelocity = bd->linearVelocity;
 	m_angularVelocity = bd->angularVelocity;
 
+#ifdef ENABLE_DAMPING
 	m_linearDamping = bd->linearDamping;
 	m_angularDamping = bd->angularDamping;
+#endif // ENABLE_DAMPING
+
+#ifdef ENABLE_GRAVITY_SCALE
 	m_gravityScale = bd->gravityScale;
+#endif // ENABLE_GRAVITY_SCALE
 
 	m_force.SetZero();
 	m_torque = 0.0f;
 
+#ifdef ENABLE_SLEEPING
 	m_sleepTime = 0.0f;
+#endif // ENABLE_SLEEPING
 
 	m_type = bd->type;
 
-	if (m_type == b2_dynamicBody)
-	{
-		m_mass = 1.0f;
-		m_invMass = 1.0f;
-	}
-	else
-	{
-		m_mass = 0.0f;
-		m_invMass = 0.0f;
-	}
+	m_mass = 0.0f;
+	m_invMass = 0.0f;
 
 	m_I = 0.0f;
 	m_invI = 0.0f;
 
+#ifdef ENABLE_USER_DATA
 	m_userData = bd->userData;
+#endif // ENABLE_USER_DATA
 
-	m_fixtureList = NULL;
+	m_fixtureList = nullptr;
 	m_fixtureCount = 0;
 }
 
@@ -115,14 +126,62 @@ b2Body::~b2Body()
 void b2Body::SetType(b2BodyType type)
 {
 	b2Assert(m_world->IsLocked() == false);
-	if (m_world->IsLocked() == true)
-	{
+	if (m_world->IsLocked() == true) {
 		return;
 	}
 
-	if (m_type == type)
-	{
+	if (m_type == type) {
 		return;
+	}
+
+	if (m_type == b2_staticBody || type == b2_staticBody) {
+		m_world->m_contactManager.m_broadPhase.InvalidateStaticBodies();
+
+		// since the world list is split into two groups with static and non static bodies
+		// If the body type changes we must remove and re-insert the body in the correct group
+		// Code below is copied from world CreateBody and DestroyBody accordingly
+
+		// Remove world body list.
+		if (m_prev) {
+			m_prev->m_next = m_next;
+		}
+
+		if (m_next) {
+			m_next->m_prev = m_prev;
+		}
+
+		if (this == m_world->m_bodyListHead) {
+			m_world->m_bodyListHead = m_next;
+		}
+
+		if (this == m_world->m_bodyListTail) {
+			m_world->m_bodyListTail = m_prev;
+		}
+
+		// Add to world doubly linked list in the correct group.
+		if (type == b2_staticBody) {
+			m_prev = m_world->m_bodyListTail;
+			m_next = nullptr;
+
+			if (m_world->m_bodyListTail) {
+				m_world->m_bodyListTail->m_next = this;
+			} else {
+				m_world->m_bodyListHead = this;
+			}
+
+			m_world->m_bodyListTail = this;
+		} else {
+			m_prev = nullptr;
+			m_next = m_world->m_bodyListHead;
+
+			if (m_world->m_bodyListHead) {
+				m_world->m_bodyListHead->m_prev = this;
+			} else {
+				m_world->m_bodyListTail = this;
+			}
+
+			m_world->	m_bodyListHead = this;
+		}
 	}
 
 	m_type = type;
@@ -135,26 +194,26 @@ void b2Body::SetType(b2BodyType type)
 		m_angularVelocity = 0.0f;
 		m_sweep.a0 = m_sweep.a;
 		m_sweep.c0 = m_sweep.c;
-		SynchronizeFixtures();
+
+		m_flags &= ~e_awakeFlag;
+		UpdateAABBs();
 	}
 
-	SetAwake(true);
+	SET_AWAKE_OR_NONE(this);
 
 	m_force.SetZero();
 	m_torque = 0.0f;
 
 	// Delete the attached contacts.
-	b2ContactEdge* ce = m_contactList;
-	while (ce)
-	{
-		b2ContactEdge* ce0 = ce;
-		ce = ce->next;
-		m_world->m_contactManager.Destroy(ce0->contact);
+	for (int32 i = 0; i < m_contactCount; ++i) {
+		m_world->m_contactManager.Destroy(m_contactList[i]);
 	}
-	m_contactList = NULL;
+
+	m_contactCount = 0;
 
 	// Touch the proxies so that new contacts will be created (when appropriate)
-	b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
+	//TODO? probably not needed
+	/*b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
 	for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
 	{
 		int32 proxyCount = f->m_proxyCount;
@@ -162,7 +221,7 @@ void b2Body::SetType(b2BodyType type)
 		{
 			broadPhase->TouchProxy(f->m_proxies[i].proxyId);
 		}
-	}
+	}*/
 }
 
 b2Fixture* b2Body::CreateFixture(const b2FixtureDef* def)
@@ -170,7 +229,7 @@ b2Fixture* b2Body::CreateFixture(const b2FixtureDef* def)
 	b2Assert(m_world->IsLocked() == false);
 	if (m_world->IsLocked() == true)
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	b2BlockAllocator* allocator = &m_world->m_blockAllocator;
@@ -178,12 +237,6 @@ b2Fixture* b2Body::CreateFixture(const b2FixtureDef* def)
 	void* memory = allocator->Allocate(sizeof(b2Fixture));
 	b2Fixture* fixture = new (memory) b2Fixture;
 	fixture->Create(allocator, this, def);
-
-	if (m_flags & e_activeFlag)
-	{
-		b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
-		fixture->CreateProxies(broadPhase, m_xf);
-	}
 
 	fixture->m_next = m_fixtureList;
 	m_fixtureList = fixture;
@@ -197,14 +250,22 @@ b2Fixture* b2Body::CreateFixture(const b2FixtureDef* def)
 		ResetMassData();
 	}
 
+	if (m_flags & e_enabledFlag)
+	{
+		b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
+		fixture->UpdateAABB();
+		broadPhase->Add(fixture);
+		//fixture->CreateProxies(broadPhase, m_xf);
+	}
+
 	// Let the world know we have a new fixture. This will cause new contacts
 	// to be created at the beginning of the next time step.
-	m_world->m_flags |= b2World::e_newFixture;
+	m_world->m_newContacts = true;
 
 	return fixture;
 }
 
-b2Fixture* b2Body::CreateFixture(const b2Shape* shape, float32 density)
+b2Fixture* b2Body::CreateFixture(const b2Shape* shape, float density)
 {
 	b2FixtureDef def;
 	def.shape = shape;
@@ -215,6 +276,11 @@ b2Fixture* b2Body::CreateFixture(const b2Shape* shape, float32 density)
 
 void b2Body::DestroyFixture(b2Fixture* fixture)
 {
+	if (fixture == NULL)
+	{
+		return;
+	}
+
 	b2Assert(m_world->IsLocked() == false);
 	if (m_world->IsLocked() == true)
 	{
@@ -226,17 +292,13 @@ void b2Body::DestroyFixture(b2Fixture* fixture)
 	// Remove the fixture from this body's singly linked list.
 	b2Assert(m_fixtureCount > 0);
 	b2Fixture** node = &m_fixtureList;
-#if B2_ASSERT_ENABLED
 	bool found = false;
-#endif // B2_ASSERT_ENABLED
-	while (*node != NULL)
+	while (*node != nullptr)
 	{
 		if (*node == fixture)
 		{
 			*node = fixture->m_next;
-#if B2_ASSERT_ENABLED
 			found = true;
-#endif // B2_ASSERT_ENABLED
 			break;
 		}
 
@@ -247,34 +309,34 @@ void b2Body::DestroyFixture(b2Fixture* fixture)
 	b2Assert(found);
 
 	// Destroy any contacts associated with the fixture.
-	b2ContactEdge* edge = m_contactList;
-	while (edge)
-	{
-		b2Contact* c = edge->contact;
-		edge = edge->next;
+	for (int32 i = 0; i < m_contactCount; ++i) {
+		b2Contact* c = m_contactList[i];
 
 		b2Fixture* fixtureA = c->GetFixtureA();
 		b2Fixture* fixtureB = c->GetFixtureB();
 
-		if (fixture == fixtureA || fixture == fixtureB)
-		{
+		if (fixture == fixtureA || fixture == fixtureB) {
 			// This destroys the contact and removes it from
 			// this body's contact list.
 			m_world->m_contactManager.Destroy(c);
+
+			m_contactCount--;
+			m_contactList[i] = m_contactList[m_contactCount];
+			i--;
 		}
 	}
 
 	b2BlockAllocator* allocator = &m_world->m_blockAllocator;
 
-	if (m_flags & e_activeFlag)
+	if (m_flags & e_enabledFlag)
 	{
 		b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
-		fixture->DestroyProxies(broadPhase);
+		broadPhase->Remove(fixture);
 	}
 
+	fixture->m_body = nullptr;
+	fixture->m_next = nullptr;
 	fixture->Destroy(allocator);
-	fixture->m_body = NULL;
-	fixture->m_next = NULL;
 	fixture->~b2Fixture();
 	allocator->Free(fixture, sizeof(b2Fixture));
 
@@ -325,12 +387,6 @@ void b2Body::ResetMassData()
 	{
 		m_invMass = 1.0f / m_mass;
 		localCenter *= m_invMass;
-	}
-	else
-	{
-		// Force all dynamic bodies to have a positive mass.
-		m_mass = 1.0f;
-		m_invMass = 1.0f;
 	}
 
 	if (m_I > 0.0f && (m_flags & e_fixedRotationFlag) == 0)
@@ -420,7 +476,7 @@ bool b2Body::ShouldCollide(const b2Body* other) const
 	return true;
 }
 
-void b2Body::SetTransform(const b2Vec2& position, float32 angle)
+void b2Body::SetTransform(const b2Vec2& position, float angle)
 {
 	b2Assert(m_world->IsLocked() == false);
 	if (m_world->IsLocked() == true)
@@ -438,54 +494,50 @@ void b2Body::SetTransform(const b2Vec2& position, float32 angle)
 	m_sweep.c0 = m_sweep.c;
 	m_sweep.a0 = angle;
 
-	b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
-	for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
-	{
-		f->Synchronize(broadPhase, m_xf, m_xf);
+	UpdateAABBs();
+
+	// Check for new contacts the next step
+	m_world->m_newContacts = true;
+}
+
+void b2Body::UpdateAABBs() {
+	for (b2Fixture* f = m_fixtureList; f; f = f->m_next) {
+		f->UpdateAABB();
 	}
 }
 
-void b2Body::SynchronizeFixtures()
-{
-	b2Transform xf1;
-	xf1.q.Set(m_sweep.a0);
-	xf1.p = m_sweep.c0 - b2Mul(xf1.q, m_sweep.localCenter);
-
-	b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
-	for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
-	{
-		f->Synchronize(broadPhase, xf1, m_xf);
-	}
-}
-
-void b2Body::SetActive(bool flag)
+void b2Body::SetEnabled(bool flag)
 {
 	b2Assert(m_world->IsLocked() == false);
 
-	if (flag == IsActive())
+	if (flag == IsEnabled())
 	{
 		return;
 	}
 
 	if (flag)
 	{
-		m_flags |= e_activeFlag;
+		m_flags |= e_enabledFlag;
 
 		// Create all proxies.
-		b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
+		// TODO
+		/*b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
 		for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
 		{
 			f->CreateProxies(broadPhase, m_xf);
 		}
+		*/
 
-		// Contacts are created the next time step.
+		// Contacts are created at the beginning of the next
+		m_world->m_newContacts = true;
 	}
 	else
 	{
-		m_flags &= ~e_activeFlag;
+		m_flags &= ~e_enabledFlag;
 
 		// Destroy all proxies.
-		b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
+		// TODO
+		/*b2BroadPhase* broadPhase = &m_world->m_contactManager.m_broadPhase;
 		for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
 		{
 			f->DestroyProxies(broadPhase);
@@ -499,7 +551,7 @@ void b2Body::SetActive(bool flag)
 			ce = ce->next;
 			m_world->m_contactManager.Destroy(ce0->contact);
 		}
-		m_contactList = NULL;
+		m_contactList = nullptr;*/
 	}
 }
 
@@ -525,32 +577,55 @@ void b2Body::SetFixedRotation(bool flag)
 	ResetMassData();
 }
 
+void b2Body::AddContact(b2Contact* c) {
+	if (m_contactCount == m_contactCapacity) {
+		m_contactCapacity *= 2;
+		b2Contact** newList = (b2Contact**) b2Alloc(m_contactCapacity * sizeof(b2Contact*));
+		memcpy(newList, m_contactList, m_contactCount * sizeof(b2Contact*));
+		b2Free(m_contactList);
+		m_contactList = newList;
+	}
+
+	m_contactList[m_contactCount++] = c;
+}
+
 void b2Body::Dump()
 {
 	int32 bodyIndex = m_islandIndex;
 
-	b2Log("{\n");
-	b2Log("  b2BodyDef bd;\n");
-	b2Log("  bd.type = b2BodyType(%d);\n", m_type);
-	b2Log("  bd.position.Set(%.15lef, %.15lef);\n", m_xf.p.x, m_xf.p.y);
-	b2Log("  bd.angle = %.15lef;\n", m_sweep.a);
-	b2Log("  bd.linearVelocity.Set(%.15lef, %.15lef);\n", m_linearVelocity.x, m_linearVelocity.y);
-	b2Log("  bd.angularVelocity = %.15lef;\n", m_angularVelocity);
-	b2Log("  bd.linearDamping = %.15lef;\n", m_linearDamping);
-	b2Log("  bd.angularDamping = %.15lef;\n", m_angularDamping);
-	b2Log("  bd.allowSleep = bool(%d);\n", m_flags & e_autoSleepFlag);
-	b2Log("  bd.awake = bool(%d);\n", m_flags & e_awakeFlag);
-	b2Log("  bd.fixedRotation = bool(%d);\n", m_flags & e_fixedRotationFlag);
-	b2Log("  bd.bullet = bool(%d);\n", m_flags & e_bulletFlag);
-	b2Log("  bd.active = bool(%d);\n", m_flags & e_activeFlag);
-	b2Log("  bd.gravityScale = %.15lef;\n", m_gravityScale);
-	b2Log("  bodies[%d] = m_world->CreateBody(&bd);\n", m_islandIndex);
-	b2Log("\n");
+	// %.9g is sufficient to save and load the same value using text
+	// FLT_DECIMAL_DIG == 9
+
+	b2Dump("{\n");
+	b2Dump("  b2BodyDef bd;\n");
+	b2Dump("  bd.type = b2BodyType(%d);\n", m_type);
+	b2Dump("  bd.position.Set(%.9g, %.9g);\n", m_xf.p.x, m_xf.p.y);
+	b2Dump("  bd.angle = %.9g;\n", m_sweep.a);
+	b2Dump("  bd.linearVelocity.Set(%.9g, %.9g);\n", m_linearVelocity.x, m_linearVelocity.y);
+	b2Dump("  bd.angularVelocity = %.9g;\n", m_angularVelocity);
+
+#ifdef ENABLE_DAMPING
+	b2Dump("  bd.linearDamping = %.9g;\n", m_linearDamping);
+	b2Dump("  bd.angularDamping = %.9g;\n", m_angularDamping);
+#endif // ENABLE_DAMPING
+
+	b2Dump("  bd.allowSleep = bool(%d);\n", m_flags & e_autoSleepFlag);
+	b2Dump("  bd.awake = bool(%d);\n", m_flags & e_awakeFlag);
+	b2Dump("  bd.fixedRotation = bool(%d);\n", m_flags & e_fixedRotationFlag);
+	b2Dump("  bd.bullet = bool(%d);\n", m_flags & e_bulletFlag);
+	b2Dump("  bd.enabled = bool(%d);\n", m_flags & e_enabledFlag);
+
+#ifdef ENABLE_GRAVITY_SCALE
+	b2Dump("  bd.gravityScale = %.9g;\n", m_gravityScale);
+#endif // ENABLE_GRAVITY_SCALE
+
+	b2Dump("  bodies[%d] = m_world->CreateBody(&bd);\n", m_islandIndex);
+	b2Dump("\n");
 	for (b2Fixture* f = m_fixtureList; f; f = f->m_next)
 	{
-		b2Log("  {\n");
+		b2Dump("  {\n");
 		f->Dump(bodyIndex);
-		b2Log("  }\n");
+		b2Dump("  }\n");
 	}
-	b2Log("}\n");
+	b2Dump("}\n");
 }

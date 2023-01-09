@@ -15,9 +15,9 @@
 * misrepresented as being the original software.
 * 3. This notice may not be removed or altered from any source distribution.
 */
-#include <Box2D/Particle/b2VoronoiDiagram.h>
-#include <Box2D/Particle/b2StackQueue.h>
-#include <Box2D/Collision/b2Collision.h>
+#include "Box2D/Particle/b2VoronoiDiagram.h"
+#include "Box2D/Particle/b2StackQueue.h"
+#include "Box2D/Collision/b2Collision.h"
 
 b2VoronoiDiagram::b2VoronoiDiagram(
 	b2StackAllocator* allocator, int32 generatorCapacity)

@@ -18,8 +18,8 @@
 #ifndef B2_TRACKED_BLOCK_H
 #define B2_TRACKED_BLOCK_H
 
-#include <Box2D/Common/b2IntrusiveList.h>
-#include <Box2D/Common/b2Settings.h>
+#include "Box2D/Common/b2IntrusiveList.h"
+#include "Box2D/Common/b2Settings.h"
 
 /// Alignment (in bytes) of user memory associated with b2TrackedBlock.
 const int32 b2_mallocAlignment = 32;

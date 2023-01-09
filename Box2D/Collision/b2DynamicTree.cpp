@@ -17,6 +17,7 @@
 * 3. This notice may not be removed or altered from any source distribution.
 */
 
+/*
 #include <Box2D/Collision/b2DynamicTree.h>
 #include <memory.h>
 #include <string.h>
@@ -782,3 +783,4 @@ void b2DynamicTree::ShiftOrigin(const b2Vec2& newOrigin)
 		m_nodes[i].aabb.upperBound -= newOrigin;
 	}
 }
+*/

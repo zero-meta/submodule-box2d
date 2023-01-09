@@ -18,7 +18,7 @@
 #ifndef B2_GROWABLE_BUFFER_H
 #define B2_GROWABLE_BUFFER_H
 
-#include <Box2D/Common/b2BlockAllocator.h>
+#include "Box2D/Common/b2BlockAllocator.h"
 #include <string.h>
 #include <memory.h>
 #include <algorithm>
@@ -38,9 +38,9 @@ public:
 	{
 	#if defined(LIQUIDFUN_SIMD_NEON)
 		// b2ParticleAssemply.neon.s assumes these values are at fixed offsets.
-        // If this assert fails, be sure to update the assembly offsets!
+		// If this assert fails, be sure to update the assembly offsets!
 		// ldr r3, [r9, #0] @ r3 = out = contacts.data
-        // ldr r6, [r9, #8] @ r6 = contacts.capacity
+		// ldr r6, [r9, #8] @ r6 = contacts.capacity
 		b2Assert((intptr_t)&data - (intptr_t)(this) == 0
 			  && (intptr_t)&capacity - (intptr_t)(this) == 8);
 	#endif // defined(LIQUIDFUN_SIMD_NEON)
@@ -197,4 +197,3 @@ private:
 };
 
 #endif // B2_GROWABLE_BUFFER_H
-

@@ -15,19 +15,21 @@
 * misrepresented as being the original software.
 * 3. This notice may not be removed or altered from any source distribution.
 */
-#include <Box2D/Particle/b2ParticleSystem.h>
-#include <Box2D/Particle/b2ParticleGroup.h>
-#include <Box2D/Particle/b2VoronoiDiagram.h>
-#include <Box2D/Particle/b2ParticleAssembly.h>
-#include <Box2D/Common/b2BlockAllocator.h>
-#include <Box2D/Dynamics/b2World.h>
-#include <Box2D/Dynamics/b2WorldCallbacks.h>
-#include <Box2D/Dynamics/b2Body.h>
-#include <Box2D/Dynamics/b2Fixture.h>
-#include <Box2D/Collision/Shapes/b2Shape.h>
-#include <Box2D/Collision/Shapes/b2EdgeShape.h>
-#include <Box2D/Collision/Shapes/b2ChainShape.h>
+#include "Box2D/Particle/b2ParticleSystem.h"
+#include "Box2D/Particle/b2ParticleGroup.h"
+#include "Box2D/Particle/b2ParticleAssembly.h"
+#include "Box2D/Common/b2BlockAllocator.h"
+#include "Box2D/Dynamics/b2World.h"
+#include "Box2D/Dynamics/b2WorldCallbacks.h"
+#include "Box2D/Dynamics/b2Body.h"
+#include "Box2D/Dynamics/b2Fixture.h"
+#include "Box2D/Collision/Shapes/b2Shape.h"
+#include "Box2D/Collision/Shapes/b2EdgeShape.h"
 #include <algorithm>
+
+#include "Box2D/Particle/b2VoronoiDiagram.h"
+
+#ifdef ENABLE_LIQUID
 
 // Define LIQUIDFUN_SIMD_TEST_VS_REFERENCE to run both SIMD and reference
 // versions, and assert that the results are identical. This is useful when
@@ -52,7 +54,7 @@ static const uint32 yMask = ((1u << yTruncBits) - 1u) << yShift;
 static const uint32 xMask = ~yMask;
 static const uint32 relativeTagRight = 1u << xShift;
 static const uint32 relativeTagBottomLeft = (uint32)((1 << yShift) +
-                                                    (-1 << xShift));
+													((~uint32(0)) << xShift));
 
 static const uint32 relativeTagBottomRight = (1u << yShift) + (1u << xShift);
 
@@ -103,19 +105,15 @@ public:
 		// now lie on or in the fixture generating
 		if (!contact.fixture->TestPoint(pos))
 		{
-			int32 childCount = contact.fixture->GetShape()->GetChildCount();
-			for (int32 childIndex = 0; childIndex < childCount; childIndex++)
+			float32 distance;
+			b2Vec2 normal;
+			contact.fixture->ComputeDistance(pos, &distance, &normal);
+			if (distance < b2_linearSlop)
 			{
-				float32 distance;
-				b2Vec2 normal;
-				contact.fixture->ComputeDistance(pos, &distance, &normal,
-																	childIndex);
-				if (distance < b2_linearSlop)
-				{
-					return false;
-				}
+				return false;
 			}
 			++(*m_discarded);
+
 			return true;
 		}
 
@@ -403,12 +401,6 @@ b2ParticleSystem::b2ParticleSystem(const b2ParticleSystemDef* def,
 	m_hasForce = false;
 	m_iterationIndex = 0;
 
-	SetStrictContactCheck(def->strictContactCheck);
-	SetDensity(def->density);
-	SetGravityScale(def->gravityScale);
-	SetRadius(def->radius);
-	SetMaxParticleCount(def->maxCount);
-
 	m_count = 0;
 	m_internalAllocatedCapacity = 0;
 	m_forceBuffer = NULL;
@@ -418,6 +410,12 @@ b2ParticleSystem::b2ParticleSystem(const b2ParticleSystemDef* def,
 	m_accumulation2Buffer = NULL;
 	m_depthBuffer = NULL;
 	m_groupBuffer = NULL;
+
+	SetStrictContactCheck(def->strictContactCheck);
+	SetDensity(def->density);
+	SetGravityScale(def->gravityScale);
+	SetRadius(def->radius);
+	SetMaxParticleCount(def->maxCount);
 
 	m_groupCount = 0;
 	m_groupList = NULL;
@@ -850,7 +848,7 @@ int32 b2ParticleSystem::DestroyParticlesInShape(
 		int32 m_destroyed;
 	} callback(this, shape, xf, callDestructionListener);
 	b2AABB aabb;
-	shape.ComputeAABB(&aabb, xf, 0);
+	shape.ComputeAABB(&aabb, xf);
 	m_world->QueryAABB(&callback, aabb);
 	return callback.Destroyed();
 }
@@ -881,29 +879,26 @@ void b2ParticleSystem::CreateParticlesStrokeShapeForGroup(
 		stride = GetParticleStride();
 	}
 	float32 positionOnEdge = 0;
-	int32 childCount = shape->GetChildCount();
-	for (int32 childIndex = 0; childIndex < childCount; childIndex++)
+	b2EdgeShape edge;
+	if (shape->GetType() == b2Shape::e_edge)
 	{
-		b2EdgeShape edge;
-		if (shape->GetType() == b2Shape::e_edge)
-		{
-			edge = *(b2EdgeShape*) shape;
-		}
-		else
-		{
-			b2Assert(shape->GetType() == b2Shape::e_chain);
-			((b2ChainShape*) shape)->GetChildEdge(&edge, childIndex);
-		}
-		b2Vec2 d = edge.m_vertex2 - edge.m_vertex1;
-		float32 edgeLength = d.Length();
-		while (positionOnEdge < edgeLength)
-		{
-			b2Vec2 p = edge.m_vertex1 + positionOnEdge / edgeLength * d;
-			CreateParticleForGroup(groupDef, xf, p);
-			positionOnEdge += stride;
-		}
-		positionOnEdge -= edgeLength;
+		edge = *(b2EdgeShape*) shape;
 	}
+	else
+	{
+		//b2Assert(shape->GetType() == b2Shape::e_chain);
+		// TODO
+		//((b2ChainShape*) shape)->GetChildEdge(&edge, childIndex);
+	}
+	b2Vec2 d = edge.m_vertex2 - edge.m_vertex1;
+	float32 edgeLength = d.Length();
+	while (positionOnEdge < edgeLength)
+	{
+		b2Vec2 p = edge.m_vertex1 + positionOnEdge / edgeLength * d;
+		CreateParticleForGroup(groupDef, xf, p);
+		positionOnEdge += stride;
+	}
+	positionOnEdge -= edgeLength;
 }
 
 void b2ParticleSystem::CreateParticlesFillShapeForGroup(
@@ -918,8 +913,7 @@ void b2ParticleSystem::CreateParticlesFillShapeForGroup(
 	b2Transform identity;
 	identity.SetIdentity();
 	b2AABB aabb;
-	b2Assert(shape->GetChildCount() == 1);
-	shape->ComputeAABB(&aabb, identity, 0);
+	shape->ComputeAABB(&aabb, identity);
 	for (float32 y = floorf(aabb.lowerBound.y / stride) * stride;
 		y < aabb.upperBound.y; y += stride)
 	{
@@ -941,7 +935,7 @@ void b2ParticleSystem::CreateParticlesWithShapeForGroup(
 {
 	switch (shape->GetType()) {
 	case b2Shape::e_edge:
-	case b2Shape::e_chain:
+	//case b2Shape::e_chain:
 		CreateParticlesStrokeShapeForGroup(shape, groupDef, xf);
 		break;
 	case b2Shape::e_polygon:
@@ -972,10 +966,6 @@ void b2ParticleSystem::CreateParticlesWithShapesForGroup(
 			B2_NOT_USED(allocator);
 			return NULL;
 		}
-		int32 GetChildCount() const
-		{
-			return 1;
-		}
 		bool TestPoint(const b2Transform& xf, const b2Vec2& p) const
 		{
 			for (int32 i = 0; i < m_shapeCount; i++)
@@ -988,43 +978,35 @@ void b2ParticleSystem::CreateParticlesWithShapesForGroup(
 			return false;
 		}
 		void ComputeDistance(const b2Transform& xf, const b2Vec2& p,
-					float32* distance, b2Vec2* normal, int32 childIndex) const
+					float32* distance, b2Vec2* normal) const
 		{
 			b2Assert(false);
 			B2_NOT_USED(xf);
 			B2_NOT_USED(p);
 			B2_NOT_USED(distance);
 			B2_NOT_USED(normal);
-			B2_NOT_USED(childIndex);
 		}
 		bool RayCast(b2RayCastOutput* output, const b2RayCastInput& input,
-						const b2Transform& transform, int32 childIndex) const
+						const b2Transform& transform) const
 		{
 			b2Assert(false);
 			B2_NOT_USED(output);
 			B2_NOT_USED(input);
 			B2_NOT_USED(transform);
-			B2_NOT_USED(childIndex);
 			return false;
 		}
 		void ComputeAABB(
-				b2AABB* aabb, const b2Transform& xf, int32 childIndex) const
+				b2AABB* aabb, const b2Transform& xf) const
 		{
-			B2_NOT_USED(childIndex);
 			aabb->lowerBound.x = +FLT_MAX;
 			aabb->lowerBound.y = +FLT_MAX;
 			aabb->upperBound.x = -FLT_MAX;
 			aabb->upperBound.y = -FLT_MAX;
-			b2Assert(childIndex == 0);
 			for (int32 i = 0; i < m_shapeCount; i++)
 			{
-				int32 childCount = m_shapes[i]->GetChildCount();
-				for (int32 j = 0; j < childCount; j++)
-				{
-					b2AABB subaabb;
-					m_shapes[i]->ComputeAABB(&subaabb, xf, j);
-					aabb->Combine(subaabb);
-				}
+				b2AABB subaabb;
+				m_shapes[i]->ComputeAABB(&subaabb, xf);
+				aabb->Combine(subaabb);
 			}
 		}
 		void ComputeMass(b2MassData* massData, float32 density) const
@@ -1322,10 +1304,9 @@ void b2ParticleSystem::CreateParticleGroupsFromParticleList(
 		for (ParticleListNode* node = list; node; node = node->next)
 		{
 			int32 oldIndex = node->index;
-			uint32& flags = m_flagsBuffer.data[oldIndex];
-			b2Assert(!(flags & b2_zombieParticle));
+			b2Assert(!(m_flagsBuffer.data[oldIndex] & b2_zombieParticle));
 			int32 newIndex = CloneParticle(oldIndex, newGroup);
-			flags |= b2_zombieParticle;
+			m_flagsBuffer.data[oldIndex] |= b2_zombieParticle;
 			node->index = newIndex;
 		}
 	}
@@ -2174,9 +2155,9 @@ public:
 
 	bool operator()(const b2ParticleContact& contact)
 	{
-	    return (contact.GetFlags() & b2_particleContactFilterParticle)
-	        && !m_contactFilter->ShouldCollide(m_system, contact.GetIndexA(),
-	        								   contact.GetIndexB());
+		return (contact.GetFlags() & b2_particleContactFilterParticle)
+			&& !m_contactFilter->ShouldCollide(m_system, contact.GetIndexA(),
+											   contact.GetIndexB());
 	}
 
 private:
@@ -2206,7 +2187,7 @@ void b2ParticleSystem::NotifyContactListenerPreContact(
 
 	particlePairs->Initialize(m_contactBuffer.Begin(),
 							  m_contactBuffer.GetCount(),
-						      GetFlagsBuffer());
+							  GetFlagsBuffer());
 }
 
 // Note: This function is not const because 'this' in BeginContact and
@@ -2386,7 +2367,7 @@ void FixedSetAllocator::Clear()
 	{
 		m_allocator->Free(m_buffer);
 		m_buffer = NULL;
-        m_count = 0;
+		m_count = 0;
 	}
 }
 
@@ -2521,24 +2502,21 @@ private:
 			return true;
 		}
 		const b2Shape* shape = fixture->GetShape();
-		int32 childCount = shape->GetChildCount();
-		for (int32 childIndex = 0; childIndex < childCount; childIndex++)
+		// TODO needs UpdateAABB?
+		b2AABB aabb = fixture->GetAABB();
+		b2ParticleSystem::InsideBoundsEnumerator enumerator =
+			m_system->GetInsideBoundsEnumerator(aabb);
+		int32 index;
+		while ((index = enumerator.GetNext()) >= 0)
 		{
-			b2AABB aabb = fixture->GetAABB(childIndex);
-			b2ParticleSystem::InsideBoundsEnumerator enumerator =
-								m_system->GetInsideBoundsEnumerator(aabb);
-			int32 index;
-			while ((index = enumerator.GetNext()) >= 0)
-			{
-				ReportFixtureAndParticle(fixture, childIndex, index);
-			}
+			ReportFixtureAndParticle(fixture, index);
 		}
 		return true;
 	}
 
 	// Receive a fixture and a particle which may be overlapping.
 	virtual void ReportFixtureAndParticle(
-						b2Fixture* fixture, int32 childIndex, int32 index) = 0;
+		b2Fixture* fixture, int32 index) = 0;
 
 protected:
 	b2ParticleSystem* m_system;
@@ -2651,12 +2629,13 @@ void b2ParticleSystem::UpdateBodyContacts()
 		}
 
 		void ReportFixtureAndParticle(
-								b2Fixture* fixture, int32 childIndex, int32 a)
+								b2Fixture* fixture, int32 a)
 		{
 			b2Vec2 ap = m_system->m_positionBuffer.data[a];
 			float32 d;
 			b2Vec2 n;
-			fixture->ComputeDistance(ap, &d, &n, childIndex);
+			fixture->ComputeDistance(ap, &d, &n);
+
 			if (d < m_system->m_particleDiameter && ShouldCollide(fixture, a))
 			{
 				b2Body* b = fixture->GetBody();
@@ -2731,7 +2710,7 @@ void b2ParticleSystem::RemoveSpuriousBodyContacts()
 				b2ParticleSystem::BodyContactCompare);
 
 	int32 discarded = 0;
-	std::remove_if(m_bodyContactBuffer.Begin(),
+	(void) std::remove_if(m_bodyContactBuffer.Begin(),
 					m_bodyContactBuffer.End(),
 					b2ParticleBodyContactRemovePredicate(this, &discarded));
 
@@ -2771,64 +2750,82 @@ void b2ParticleSystem::SolveCollision(const b2TimeStep& step)
 	}
 	class SolveCollisionCallback : public b2FixtureParticleQueryCallback
 	{
-		void ReportFixtureAndParticle(
-								b2Fixture* fixture, int32 childIndex, int32 a)
+		// Call the contact filter if it's set, to determine whether to
+		// filter this contact.  Returns true if contact calculations should
+		// be performed, false otherwise.
+		inline bool ShouldCollide(b2Fixture * const fixture, int32 particleIndex)
 		{
-			b2Body* body = fixture->GetBody();
-			b2Vec2 ap = m_system->m_positionBuffer.data[a];
-			b2Vec2 av = m_system->m_velocityBuffer.data[a];
-			b2RayCastOutput output;
-			b2RayCastInput input;
-			if (m_system->m_iterationIndex == 0)
-			{
-				// Put 'ap' in the local space of the previous frame
-				b2Vec2 p1 = b2MulT(body->m_xf0, ap);
-				if (fixture->GetShape()->GetType() == b2Shape::e_circle)
-				{
-					// Make relative to the center of the circle
-					p1 -= body->GetLocalCenter();
-					// Re-apply rotation about the center of the
-					// circle
-					p1 = b2Mul(body->m_xf0.q, p1);
-					// Subtract rotation of the current frame
-					p1 = b2MulT(body->m_xf.q, p1);
-					// Return to local space
-					p1 += body->GetLocalCenter();
+			if (m_contactFilter) {
+				const uint32* const flags = m_system->GetFlagsBuffer();
+				if (flags[particleIndex] & b2_fixtureContactFilterParticle) {
+					return m_contactFilter->ShouldCollide(fixture, m_system, particleIndex);
 				}
-				// Return to global space and apply rotation of current frame
-				input.p1 = b2Mul(body->m_xf, p1);
 			}
-			else
-			{
-				input.p1 = ap;
-			}
-			input.p2 = ap + m_step.dt * av;
-			input.maxFraction = 1;
-			if (fixture->RayCast(&output, input, childIndex))
-			{
-				b2Vec2 n = output.normal;
-				b2Vec2 p =
-					(1 - output.fraction) * input.p1 +
-					output.fraction * input.p2 +
-					b2_linearSlop * n;
-				b2Vec2 v = m_step.inv_dt * (p - ap);
-				m_system->m_velocityBuffer.data[a] = v;
-				b2Vec2 f = m_step.inv_dt *
-					m_system->GetParticleMass() * (av - v);
-				m_system->ParticleApplyForce(a, f);
+			return true;
+		}
+
+		void ReportFixtureAndParticle(b2Fixture* fixture, int32 a)
+		{
+			if (ShouldCollide(fixture, a)) {
+				b2Body* body = fixture->GetBody();
+				b2Vec2 ap = m_system->m_positionBuffer.data[a];
+				b2Vec2 av = m_system->m_velocityBuffer.data[a];
+				b2RayCastOutput output;
+				b2RayCastInput input;
+				if (m_system->m_iterationIndex == 0)
+				{
+					// Put 'ap' in the local space of the previous frame
+
+					b2Vec2 p1 = b2MulT(body->m_xf0, ap);
+
+					if (fixture->GetShape()->GetType() == b2Shape::e_circle)
+					{
+						// Make relative to the center of the circle
+						p1 -= body->GetLocalCenter();
+						// Re-apply rotation about the center of the
+						// circle
+
+						p1 = b2Mul(body->m_xf0.q, p1);
+
+						// Subtract rotation of the current frame
+						p1 = b2MulT(body->m_xf.q, p1);
+						// Return to local space
+						p1 += body->GetLocalCenter();
+					}
+					// Return to global space and apply rotation of current frame
+					input.p1 = b2Mul(body->m_xf, p1);
+				}
+				else
+				{
+					input.p1 = ap;
+				}
+				input.p2 = ap + m_step.dt * av;
+				input.maxFraction = 1;
+				if (fixture->RayCast(&output, input))
+				{
+					float32 frac = output.fraction;
+					b2Vec2 n = output.normal;
+					b2Vec2 p = (1 - frac) * input.p1 + frac * input.p2 + b2_linearSlop * n;
+					b2Vec2 v = m_step.inv_dt * (p - ap);
+					m_system->m_velocityBuffer.data[a] = v;
+					b2Vec2 f = m_step.inv_dt * m_system->GetParticleMass() * (av - v);
+					m_system->ParticleApplyForce(a, f);
+				}
 			}
 		}
 
 		b2TimeStep m_step;
+		b2ContactFilter* m_contactFilter;
 
 	public:
 		SolveCollisionCallback(
-			b2ParticleSystem* system, const b2TimeStep& step):
+			b2ParticleSystem* system, const b2TimeStep& step, b2ContactFilter* contactFilter) :
 			b2FixtureParticleQueryCallback(system)
 		{
 			m_step = step;
+			m_contactFilter = contactFilter;
 		}
-	} callback(this, step);
+	} callback(this, step, GetFixtureContactFilter());
 	m_world->QueryAABB(&callback, aabb);
 }
 
@@ -3222,7 +3219,7 @@ void b2ParticleSystem::SolvePressure(const b2TimeStep& step)
 		float32 h = m_accumulationBuffer[a] + pressurePerWeight * w;
 		b2Vec2 f = velocityPerPressure * w * m * h * n;
 		m_velocityBuffer.data[a] -= GetParticleInvMass() * f;
-		b->ApplyLinearImpulse(f, p, true);
+		b->ApplyLinearImpulse(f, p);
 	}
 	for (int32 k = 0; k < m_contactBuffer.GetCount(); k++)
 	{
@@ -3261,7 +3258,7 @@ void b2ParticleSystem::SolveDamping(const b2TimeStep& step)
 				b2Max(linearDamping * w, b2Min(- quadraticDamping * vn, 0.5f));
 			b2Vec2 f = damping * m * vn * n;
 			m_velocityBuffer.data[a] += GetParticleInvMass() * f;
-			b->ApplyLinearImpulse(-f, p, true);
+			b->ApplyLinearImpulse(-f, p);
 		}
 	}
 	for (int32 k = 0; k < m_contactBuffer.GetCount(); k++)
@@ -3405,7 +3402,7 @@ void b2ParticleSystem::SolveRigidDamping()
 				ApplyDamping(
 					invMassA, invInertiaA, tangentDistanceA,
 					true, aGroup, a, f, n);
-				b->ApplyLinearImpulse(-f * n, p, true);
+				b->ApplyLinearImpulse(-f * n, p);
 			}
 		}
 	}
@@ -3478,7 +3475,7 @@ void b2ParticleSystem::SolveExtraDamping()
 			{
 				b2Vec2 f = 0.5f * m * vn * n;
 				m_velocityBuffer.data[a] += GetParticleInvMass() * f;
-				b->ApplyLinearImpulse(-f, p, true);
+				b->ApplyLinearImpulse(-f, p);
 			}
 		}
 	}
@@ -3655,7 +3652,7 @@ void b2ParticleSystem::SolveViscous()
 					   m_velocityBuffer.data[a];
 			b2Vec2 f = viscousStrength * m * w * v;
 			m_velocityBuffer.data[a] += GetParticleInvMass() * f;
-			b->ApplyLinearImpulse(-f, p, true);
+			b->ApplyLinearImpulse(-f, p);
 		}
 	}
 	for (int32 k = 0; k < m_contactBuffer.GetCount(); k++)
@@ -4524,7 +4521,7 @@ void b2ParticleSystem::QueryShapeAABB(b2QueryCallback* callback,
 									  const b2Transform& xf) const
 {
 	b2AABB aabb;
-	shape.ComputeAABB(&aabb, xf, 0);
+	shape.ComputeAABB(&aabb, xf);
 	QueryAABB(callback, aabb);
 }
 
@@ -4648,3 +4645,5 @@ b2ParticleSystem::b2ExceptionType b2ParticleSystem::IsBufCopyValid(
 }
 
 #endif // LIQUIDFUN_EXTERNAL_LANGUAGE_API
+
+#endif // ENABLE_LIQUID

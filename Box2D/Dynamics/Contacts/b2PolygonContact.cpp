@@ -15,7 +15,7 @@
 * misrepresented as being the original software.
 * 3. This notice may not be removed or altered from any source distribution.
 */
-
+/*
 #include <Box2D/Dynamics/Contacts/b2PolygonContact.h>
 #include <Box2D/Common/b2BlockAllocator.h>
 #include <Box2D/Collision/b2TimeOfImpact.h>
@@ -50,3 +50,4 @@ void b2PolygonContact::Evaluate(b2Manifold* manifold, const b2Transform& xfA, co
 						(b2PolygonShape*)m_fixtureA->GetShape(), xfA,
 						(b2PolygonShape*)m_fixtureB->GetShape(), xfB);
 }
+*/
