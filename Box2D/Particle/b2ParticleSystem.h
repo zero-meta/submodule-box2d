@@ -22,6 +22,7 @@
 #include <Box2D/Common/b2GrowableBuffer.h>
 #include <Box2D/Particle/b2Particle.h>
 #include <Box2D/Dynamics/b2TimeStep.h>
+#include <Box2D/Dynamics/b2Fixture.h>
 
 #if LIQUIDFUN_UNIT_TESTS
 #include <gtest/gtest.h>
@@ -275,6 +276,9 @@ struct b2ParticleSystemDef
 	/// With the value set to 1/60 the maximum lifetime or age of a particle is
 	/// 2.27 years.
 	float32 lifetimeGranularity;
+
+	/// Contact filtering data.
+	b2Filter filter;
 };
 
 
@@ -518,6 +522,12 @@ public:
 	void SetVelocityBuffer(b2Vec2* buffer, int32 capacity);
 	void SetColorBuffer(b2ParticleColor* buffer, int32 capacity);
 	void SetUserDataBuffer(void** buffer, int32 capacity);
+
+	/// Set the contact filtering data.
+	void SetFilterData(const b2Filter& filter);
+
+	/// Get the contact filtering data.
+	const b2Filter& GetFilterData() const;
 
 	/// Get contacts between particles
 	/// Contact data can be used for many reasons, for example to trigger
@@ -1216,6 +1226,16 @@ inline void b2ParticleSystem::SetPaused(bool paused)
 inline bool b2ParticleSystem::GetPaused() const
 {
 	return m_paused;
+}
+
+inline void b2ParticleSystem::SetFilterData(const b2Filter& filter)
+{
+	m_def.filter = filter;
+}
+
+inline const b2Filter& b2ParticleSystem::GetFilterData() const
+{
+	return m_def.filter;
 }
 
 inline const b2ParticleContact* b2ParticleSystem::GetContacts() const
